@@ -2,21 +2,24 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use yew_agent::{Agent, AgentLink, Context, HandlerId};
 
-#[derive(Serialize, Deserialize, Debug)]
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Request {
-    CanvasSelectMsg((u32,u32,u32,u32)),
+    Start,
+    Stop,
+    Clear,
 }
 
-pub struct CanvasMsgBus {
-    link: AgentLink<CanvasMsgBus>,
+pub struct CommandMsgBus {
+    link: AgentLink<CommandMsgBus>,
     subscribers: HashSet<HandlerId>,
 }
 
-impl Agent for CanvasMsgBus {
+impl Agent for CommandMsgBus {
     type Reach = Context<Self>;
     type Message = ();
     type Input = Request;
-    type Output = (u32,u32,u32,u32);
+    type Output = Request;
 
     fn create(link: AgentLink<Self>) -> Self {
         Self {
@@ -28,12 +31,8 @@ impl Agent for CanvasMsgBus {
     fn update(&mut self, _msg: Self::Message) {}
 
     fn handle_input(&mut self, msg: Self::Input, _id: HandlerId) {
-        match msg {
-            Request::CanvasSelectMsg(s) => {
-                for sub in self.subscribers.iter() {
-                    self.link.respond(*sub, s.clone());
-                }
-            }
+        for sub in self.subscribers.iter() {
+            self.link.respond(*sub, msg.clone());
         }
     }
 

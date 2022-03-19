@@ -1,5 +1,5 @@
 [package]
-name = "yew-app"
+name = "yew-fractals"
 version = "0.1.0"
 edition = "2021"
 
@@ -21,5 +21,6 @@ js-sys = "0.3"
 [dependencies.web-sys]
 version = "0.3.56"
 features=[ "Performance", "DomRect", "Element", "ImageData", "Navigator", "Permissions", "Clipboard",
-    "PermissionStatus", "PermissionState", "Storage", "HtmlCanvasElement", "CanvasRenderingContext2d"]
+    "PermissionStatus", "PermissionState", "Storage", "HtmlCanvasElement", "CanvasRenderingContext2d",
+    "HtmlSelectElement"]
 

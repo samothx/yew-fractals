@@ -3,7 +3,7 @@ use yew_agent::{Dispatcher, Dispatched};
 use wasm_bindgen::{JsValue, JsCast};
 use js_sys::Object;
 
-use crate::agents::canvas_msg_bus::CanvasMsgBus;
+use crate::agents::canvas_msg_bus::{CanvasMsgBus, Request};
 use web_sys::{ImageData, HtmlCanvasElement, CanvasRenderingContext2d};
 use yew::NodeRef;
 
@@ -11,7 +11,110 @@ pub struct CanvasElement {
     event_bus: Dispatcher<CanvasMsgBus>,
     mouse_drag: Option<MouseDrag>,
     canvas_ref: NodeRef,
-    canvas: Option<HtmlCanvasElement>
+    canvas: Option<HtmlCanvasElement>,
+}
+
+
+impl Component for CanvasElement {
+    type Message = Msg;
+    type Properties = CanvasProps;
+
+    fn create(_ctx: &Context<Self>) -> Self {
+        Self {
+            event_bus: CanvasMsgBus::dispatcher(),
+            mouse_drag: None,
+            canvas_ref: NodeRef::default(),
+            canvas: None,
+        }
+    }
+
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+        match msg {
+            Msg::MouseMove(event) => {
+                let mut res = false;
+                if self.mouse_drag.is_some() {
+                    let mouse_drag = self.mouse_drag.as_ref().expect("failed to unpack mouse_drag");
+                    if let Some(image_data) = mouse_drag.image_data.as_ref() {
+                        self.undraw(image_data);
+                    }
+                    let canvas_coords = self.viewport_to_canvas_coords(
+                        event.client_x(), event.client_y())
+                        .expect("Failed to retrieve canvas coordinates");
+                    let image_data = self.draw_frame(mouse_drag.start.0, mouse_drag.start.1,
+                                                     mouse_drag.curr.0, mouse_drag.curr.1);
+                    let mouse_drag = self.mouse_drag.as_mut().expect("failed to unpack mouse_drag");
+                    mouse_drag.curr = canvas_coords;
+                    mouse_drag.image_data = Some(image_data);
+                    res = true;
+                }
+                res
+            }
+            Msg::MouseUp(event) => {
+                let mut res = false;
+                if self.mouse_drag.is_some() {
+                    let mut canvas_coords: Option<(u32,u32,u32,u32)> = None;
+
+                    if let Some(mouse_drag) = self.mouse_drag.as_ref() {
+                        if let Some(image_data) = mouse_drag.image_data.as_ref() {
+                            self.undraw(image_data);
+                        }
+                        let canvas_coords_end = self.viewport_to_canvas_coords(
+                            event.client_x(), event.client_y())
+                            .expect("Failed to retrieve canvas coordinates");
+                        canvas_coords = Some((mouse_drag.start.0,mouse_drag.start.1,
+                                canvas_coords_end.0, canvas_coords_end.1));
+                    }
+                    self.mouse_drag = None;
+                    if let Some(canvas_coords) = canvas_coords {
+                        self.event_bus.send(Request::CanvasSelectMsg(canvas_coords));
+                    }
+                    res = true;
+                }
+                res
+            }
+            Msg::MouseDown(event) => {
+                if ctx.props().edit_mode {
+                    let canvas_coords = self.viewport_to_canvas_coords(
+                        event.client_x(), event.client_y())
+                        .expect("Failed to retrieve canvas coordinates");
+                    self.mouse_drag = Some(MouseDrag {
+                        start: canvas_coords,
+                        curr: canvas_coords,
+                        image_data: None,
+                    });
+                }
+                false
+            }
+        }
+    }
+
+    fn view(&self, ctx: &Context<Self>) -> Html {
+        let on_mouse_up = ctx.link().callback(|ev| Msg::MouseUp(ev));
+        let on_mouse_down = ctx.link().callback(|ev| Msg::MouseDown(ev));
+        let on_mouse_move = ctx.link().callback(|ev| Msg::MouseMove(ev));
+
+        html![
+            <div class="canvas_cntr">
+                <canvas class="canvas" id="canvas"
+                    width={ctx.props().width.to_string()}
+                    height={ctx.props().height.to_string()}
+                    onmousedown={on_mouse_down}
+                    onmouseup={on_mouse_up}
+                    onmousemove={on_mouse_move}
+                    ref={self.canvas_ref.clone()}
+                >
+                    {"Your browser does not support the canvas tag."}
+                </canvas>
+            </div>
+        ]
+    }
+    fn rendered(&mut self, _ctx: &Context<Self>, first_render: bool) {
+        if first_render {
+            if let Some(canvas) = self.canvas_ref.cast::<HtmlCanvasElement>() {
+                self.canvas = Some(canvas)
+            }
+        }
+    }
 }
 
 impl CanvasElement {
@@ -87,96 +190,22 @@ impl CanvasElement {
         }
     }
 
+    #[inline]
     fn get_2d_context(canvas: &HtmlCanvasElement) -> CanvasRenderingContext2d {
-        // TODO: sort this out
         let tmp1: Object = canvas.get_context("2d")
             .map_or_else(|err| {
-                panic!("failed to retrieve canvas {:?}", err)
+                panic!("failed to retrieve CanvasRenderingContext2d {:?}", err)
             }, |v| v)
             .expect("2d context not found in canvas");
         let tmp2: &JsValue = tmp1.as_ref();
-
         tmp2.clone().dyn_into::<CanvasRenderingContext2d>().expect("Failed to cast to CanvasRenderingContext2d")
     }
 }
 
-
-impl Component for CanvasElement {
-    type Message = Msg;
-    type Properties = CanvasProps;
-
-    fn create(ctx: &Context<Self>) -> Self {
-        Self{
-            event_bus: CanvasMsgBus::dispatcher(),
-            mouse_drag: None,
-            canvas_ref: NodeRef::default(),
-            canvas: None,
-        }
-    }
-
-    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        match msg {
-            Msg::MouseMove => {
-                let mut res = false;
-                if ctx.props().edit_mode {
-                    if let Some(mouse_drag) = self.mouse_drag.as_ref() {
-                        // TODO: draw that frame
-                        res = true;
-                    }
-                }
-                res
-            }
-            Msg::MouseUp => {
-                let mut res = false;
-                if ctx.props().edit_mode {
-                    if let Some(mouse_drag) = self.mouse_drag.as_ref() {
-                        // TODO: draw that frame
-                        res = true;
-                    }
-                }
-                res
-            }
-            Msg::MouseDown => {
-                if ctx.props().edit_mode {
-                }
-                false
-            }
-        }
-    }
-
-    fn view(&self, ctx: &Context<Self>) -> Html {
-        let on_mouse_up = ctx.link().callback(|_| Msg::MouseUp);
-        let on_mouse_down = ctx.link().callback(|_| Msg::MouseDown);
-        let on_mouse_move = ctx.link().callback(|_| Msg::MouseMove);
-
-        html![
-            <div class="canvas_cntr">
-                <canvas class="canvas" id="canvas"
-                    width={ctx.props().width.to_string()}
-                    height={ctx.props().height.to_string()}
-                    onmousedown={on_mouse_down}
-                    onmouseup={on_mouse_up}
-                    onmousemove={on_mouse_move}
-                    ref={self.canvas_ref.clone()}
-                >
-                    {"Your browser does not support the canvas tag."}
-                </canvas>
-            </div>
-        ]
-    }
-    fn rendered(&mut self, _ctx: &Context<Self>, first_render: bool) {
-        if first_render {
-            if let Some(canvas) = self.canvas_ref.cast::<HtmlCanvasElement>() {
-                self.canvas = Some(canvas)
-            }
-        }
-    }
-}
-
 pub enum Msg {
-    MouseUp,
-    MouseDown,
-    MouseMove,
+    MouseUp(MouseEvent),
+    MouseDown(MouseEvent),
+    MouseMove(MouseEvent),
 }
 
 struct MouseDrag {
@@ -186,7 +215,7 @@ struct MouseDrag {
 }
 
 
-#[derive(Properties,PartialEq, Clone)]
+#[derive(Properties, PartialEq, Clone)]
 pub struct CanvasProps {
     pub width: u32,
     pub height: u32,

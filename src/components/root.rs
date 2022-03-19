@@ -69,6 +69,7 @@ impl Component for Root {
                         on_type_changed={ctx.link().callback(|fractal_type: FractalType| Msg::TypeChanged(fractal_type))}
                         on_edit={ctx.link().callback(|_| Msg::EditConfig)}
                         on_view_stats_changed={ctx.link().callback(|value: bool| Msg::ViewStatsChanged(value))}
+                        edit_mode={self.edit_mode}
                     />
                     <div class="fractal_container">
                         <EditJuliaCfg config={self.config.julia_set_cfg.clone()}
