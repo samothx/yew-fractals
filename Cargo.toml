@@ -1,0 +1,21 @@
+[package]
+name = "yew-app"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+yew = "0.19"
+serde = "1.0.136"
+serde_json = "1"
+png_encode_mini = "0.1.2"
+wasm-bindgen = "0.2.70"
+wasm-bindgen-futures = "0.4"
+log = "0.4"
+web_logger = "0.2"
+
+[dependencies.web-sys]
+version = "0.3.56"
+features=[ "Performance", "DomRect", "Element", "ImageData", "Navigator", "Permissions", "Clipboard", "PermissionStatus", "PermissionState", "Storage"]
+
