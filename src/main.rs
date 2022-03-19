@@ -4,7 +4,9 @@ use yew;
 extern crate log;
 
 mod components;
+mod agents;
 mod work;
+
 
 use components::root::Root;
 // mod model;
