@@ -25,7 +25,7 @@ pub enum Msg {
     JuliaSetCfgCanceled
 }
 
-struct Root {
+pub struct Root {
     config: Config,
 }
 
