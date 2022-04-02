@@ -6,13 +6,16 @@ use web_sys::Element;
 use crate::work::util::{get_u32_from_ref, get_f64_from_ref, set_value_on_ref};
 use crate::work::complex::Complex;
 use crate::components::root::{JULIA_DEFAULT_X_MAX, JULIA_DEFAULT_X_MIN};
+use crate::agents::canvas_msg_bus::CanvasSelectMsgBus;
+use yew_agent::{Bridge, Bridged};
 
 pub enum Msg {
     ResetParams,
     ZoomOut,
     ResetArea,
     SaveConfig,
-    Cancel
+    Cancel,
+    CanvasSelect((u32,u32,u32,u32))
 }
 
 pub struct EditJuliaCfg {
@@ -24,14 +27,15 @@ pub struct EditJuliaCfg {
     x_min_imag_ref: NodeRef,
     x_max_real_ref: NodeRef,
     x_max_imag_ref: NodeRef,
-    // config: Option<JuliaSetCfg>
+    _producer: Box<dyn Bridge<CanvasSelectMsgBus>>,
 }
+    // config: Option<JuliaSetCfg>
 
 impl  Component for EditJuliaCfg {
     type Message = Msg;
     type Properties = EditJuliaCfgProps;
 
-    fn create(_ctx: &Context<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
         EditJuliaCfg{
             container_ref: NodeRef::default(),
             iter_ref: NodeRef::default(),
@@ -41,6 +45,7 @@ impl  Component for EditJuliaCfg {
             x_max_imag_ref: NodeRef::default(),
             x_min_real_ref: NodeRef::default(),
             x_min_imag_ref: NodeRef::default(),
+            _producer: CanvasSelectMsgBus::bridge(ctx.link().callback(Msg::CanvasSelect)),
         }
     }
 
@@ -151,6 +156,45 @@ impl  Component for EditJuliaCfg {
                 info!("EditJuliaCfg: got msg ResetParams");
                 true
             }
+            Msg::CanvasSelect(coords) => {
+                info!("EditJuliaCfg: got msg CanvasSelect");
+                if ctx.props().edit_mode {
+                    // TODO: implement
+                    let x_scale = ctx.props().config.x_max.real() - ctx.props().config.x_min.real();
+                    let y_scale = ctx.props().config.x_max.imag() - ctx.props().config.x_min.imag();
+                    let x_min = ctx.props().config.x_min.real() + x_scale * f64::from(coords.0);
+                    let y_min = ctx.props().config.x_min.imag() + y_scale * f64::from(coords.1);
+                    let x_max = ctx.props().config.x_max.real() + x_scale * f64::from(coords.2);
+                    let y_max = ctx.props().config.x_max.imag() + y_scale * f64::from(coords.3);
+                    set_value_on_ref(&self.x_max_real_ref,
+                                     "x_max_real",
+                                     x_max.to_string().as_str())
+                        .map_or_else(|err| {
+                            error!("{}",err.as_str());
+                        }, |v| v);
+                    set_value_on_ref(&self.x_max_imag_ref,
+                                     "x_max_imag",
+                                     y_max.to_string().as_str())
+                        .map_or_else(|err| {
+                            error!("{}",err.as_str());
+                        }, |v| v);
+                    set_value_on_ref(&self.x_min_real_ref,
+                                     "x_min_real",
+                                     x_min.to_string().as_str())
+                        .map_or_else(|err| {
+                            error!("{}",err.as_str());
+                        }, |v| v);
+                    set_value_on_ref(&self.x_min_imag_ref,
+                                     "x_min_imag",
+                                     y_min.to_string().as_str())
+                        .map_or_else(|err| {
+                            error!("{}",err.as_str());
+                        }, |v| v);
+                    true
+                } else {
+                    false
+                }
+            }
         }
     }
 
@@ -254,6 +298,7 @@ impl  Component for EditJuliaCfg {
 
 #[derive(Properties,PartialEq, Clone)]
 pub struct EditJuliaCfgProps {
+    pub edit_mode: bool,
     pub config: JuliaSetCfg,
     pub cb_saved: Callback<JuliaSetCfg>,
     pub cb_canceled: Callback<()>,

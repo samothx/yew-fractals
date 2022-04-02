@@ -1,17 +1,37 @@
 use yew::prelude::*;
-use yew_agent::{Dispatcher, Dispatched};
+use yew::NodeRef;
+use yew_agent::{Dispatcher, Dispatched, Bridge, Bridged};
 use wasm_bindgen::{JsValue, JsCast};
 use js_sys::Object;
-
-use crate::agents::canvas_msg_bus::{CanvasMsgBus, Request};
 use web_sys::{ImageData, HtmlCanvasElement, CanvasRenderingContext2d};
-use yew::NodeRef;
+
+use super::root::Config;
+use crate::agents::canvas_msg_bus::{CanvasSelectMsgBus, CanvasSelectRequest};
+use crate::agents::command_msg_bus::{CommandMsgBus, CommandRequest as CommandRequest};
+use crate::work::fractal::Fractal;
+
+
+const BACKGROUND_COLOR: &str = "#000000";
+
+const COLOR_MAX: u32 = 0x00FF_FFFF;
+const COLOR_MIN: u32 = 0x00FF_FFFF;
+
+const START_HUE: u32 = 0;
+const DEFAULT_SATURATION: f32 = 1.0;
+const DEFAULT_LIGHTNESS: f32 = 0.5;
+
+const HUE_OFFSET: f32 = 0.0;
+const HUE_RANGE: f32 = 300.0;
+
 
 pub struct CanvasElement {
-    event_bus: Dispatcher<CanvasMsgBus>,
+    event_bus: Dispatcher<CanvasSelectMsgBus>,
     mouse_drag: Option<MouseDrag>,
     canvas_ref: NodeRef,
     canvas: Option<HtmlCanvasElement>,
+    _producer: Box<dyn Bridge<CommandMsgBus>>,
+    config: Config,
+    fractal: Option<Box<dyn Fractal>>
 }
 
 
@@ -19,12 +39,15 @@ impl Component for CanvasElement {
     type Message = Msg;
     type Properties = CanvasProps;
 
-    fn create(_ctx: &Context<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
         Self {
-            event_bus: CanvasMsgBus::dispatcher(),
+            event_bus: CanvasSelectMsgBus::dispatcher(),
             mouse_drag: None,
             canvas_ref: NodeRef::default(),
             canvas: None,
+            _producer: CommandMsgBus::bridge(ctx.link().callback(Msg::Command)),
+            config: ctx.props().config.clone(),
+            fractal: None,
         }
     }
 
@@ -66,7 +89,7 @@ impl Component for CanvasElement {
                     }
                     self.mouse_drag = None;
                     if let Some(canvas_coords) = canvas_coords {
-                        self.event_bus.send(Request::CanvasSelectMsg(canvas_coords));
+                        self.event_bus.send(CanvasSelectRequest::CanvasSelectMsg(canvas_coords));
                     }
                     res = true;
                 }
@@ -84,6 +107,22 @@ impl Component for CanvasElement {
                     });
                 }
                 false
+            },
+            Msg::Command(request) => {
+                info!("Msg Received: Command: {:?}", request);
+                match request {
+                    CommandRequest::Start => {
+
+                    }
+                    CommandRequest::Stop => {
+
+                    }
+                    CommandRequest::Clear => {
+                        self.clear();
+                    }
+
+                }
+                true
             }
         }
     }
@@ -96,8 +135,8 @@ impl Component for CanvasElement {
         html![
             <div class="canvas_cntr">
                 <canvas class="canvas" id="canvas"
-                    width={ctx.props().width.to_string()}
-                    height={ctx.props().height.to_string()}
+                    width={ctx.props().config.canvas_width.to_string()}
+                    height={ctx.props().config.canvas_height.to_string()}
                     onmousedown={on_mouse_down}
                     onmouseup={on_mouse_up}
                     onmousemove={on_mouse_move}
@@ -113,11 +152,28 @@ impl Component for CanvasElement {
             if let Some(canvas) = self.canvas_ref.cast::<HtmlCanvasElement>() {
                 self.canvas = Some(canvas)
             }
+            self.clear();
         }
     }
 }
 
 impl CanvasElement {
+    pub fn clear(&self) {
+        info!("Clear Canvas");
+        if let Some(canvas) = self.canvas.as_ref() {
+            if self.config.canvas_height != canvas.height() {
+                canvas.set_height(self.config.canvas_height);
+            }
+            if self.config.canvas_width != canvas.width() {
+                canvas.set_width(self.config.canvas_width);
+            }
+
+            let ctx = CanvasElement::get_2d_context(&canvas);
+            ctx.set_fill_style(&JsValue::from_str(BACKGROUND_COLOR));
+            ctx.fill_rect(0.into(), 0.into(), self.config.canvas_width.into(), self.config.canvas_height.into());
+        }
+    }
+
     pub fn draw_frame(&self, x_start: u32, y_start: u32, x_end: u32, y_end: u32) -> ImageData {
         // log!(format!("draw_frame: ({},{}),({},{})", x_start,y_start, x_end, y_end));
 
@@ -206,6 +262,7 @@ pub enum Msg {
     MouseUp(MouseEvent),
     MouseDown(MouseEvent),
     MouseMove(MouseEvent),
+    Command(CommandRequest)
 }
 
 struct MouseDrag {
@@ -217,7 +274,6 @@ struct MouseDrag {
 
 #[derive(Properties, PartialEq, Clone)]
 pub struct CanvasProps {
-    pub width: u32,
-    pub height: u32,
+    pub config: Config,
     pub edit_mode: bool,
 }

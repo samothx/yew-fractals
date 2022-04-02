@@ -18,7 +18,7 @@ const ENTER_KEY: &str = "Enter";
 const BACKGROUND_COLOR: &str = "#000000";
 const STORAGE_KEY: &str = "seed_fractals_v1";
 
-const MAX_DURATION: f64 = 200.0;
+
 
 
 pub struct Model {

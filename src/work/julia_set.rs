@@ -1,14 +1,12 @@
-use seed::log;
 // use wasm_bindgen::prelude::web_sys;
-use super::{util::find_escape_radius, MAX_DURATION};
-use seed::prelude::web_sys;
-
+use crate::components::root::Config;
 use super::{
+    util::find_escape_radius,
     complex::Complex,
-    fractal::{Fractal, Points},
-    Model,
+    fractal::{Fractal, Points, MAX_DURATION},
     stats::Stats
 };
+
 
 pub struct JuliaSet {
     scale_real: f64,
@@ -26,33 +24,33 @@ pub struct JuliaSet {
 }
 
 impl JuliaSet {
-    pub fn new(model: &Model) -> Self {
-        log!(format!(
+    pub fn new(config: &Config) -> Self {
+        info!(
             "creating fractal with: x_max: {}, x_min: {}, c: {}",
-            model.config.julia_set_cfg.x_max,
-            model.config.julia_set_cfg.x_min,
-            model.config.julia_set_cfg.c
-        ));
+            config.julia_set_cfg.x_max,
+            config.julia_set_cfg.x_min,
+            config.julia_set_cfg.c
+        );
 
-        let scale_real = (model.config.julia_set_cfg.x_max.real()
-            - model.config.julia_set_cfg.x_min.real())
-            / f64::from(model.width);
-        let scale_imag = (model.config.julia_set_cfg.x_max.imag()
-            - model.config.julia_set_cfg.x_min.imag())
-            / f64::from(model.height);
-        let max = find_escape_radius(model.config.julia_set_cfg.c.norm());
+        let scale_real = (config.julia_set_cfg.x_max.real()
+            - config.julia_set_cfg.x_min.real())
+            / f64::from(config.canvas_width);
+        let scale_imag = (config.julia_set_cfg.x_max.imag()
+            - config.julia_set_cfg.x_min.imag())
+            / f64::from(config.canvas_height);
+        let max = find_escape_radius(config.julia_set_cfg.c.norm());
 
         Self {
             scale_real,
             scale_imag,
-            offset: model.config.julia_set_cfg.x_min,
-            c: model.config.julia_set_cfg.c,
+            offset: config.julia_set_cfg.x_min,
+            c: config.julia_set_cfg.c,
             max: max * max,
             x_curr: 0,
-            width: model.width,
+            width: config.canvas_width,
             y_curr: 0,
-            height: model.height,
-            iterations: model.config.julia_set_cfg.max_iterations,
+            height: config.canvas_height,
+            iterations: config.julia_set_cfg.max_iterations,
             res: Points::default(),
             done: false,
         }

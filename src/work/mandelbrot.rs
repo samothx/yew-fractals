@@ -1,11 +1,9 @@
-use seed::{log, prelude::web_sys};
-
-use super::{util::find_escape_radius, MAX_DURATION};
+use crate::components::root::Config;
+use super::{util::find_escape_radius, fractal::MAX_DURATION};
 
 use super::{
     complex::Complex,
     fractal::{Fractal, Points},
-    Model,
     stats::Stats
 };
 
@@ -23,28 +21,28 @@ pub struct Mandelbrot {
 }
 
 impl Mandelbrot {
-    pub fn new(model: &Model) -> Self {
-        log!(format!(
+    pub fn new(config: &Config) -> Self {
+        info!(
             "creating fractal with: x_max: {}, x_min: {}",
-            model.config.mandelbrot_cfg.c_max, model.config.mandelbrot_cfg.c_min,
-        ));
+            config.mandelbrot_cfg.c_max, config.mandelbrot_cfg.c_min,
+        );
 
-        let scale_real = (model.config.mandelbrot_cfg.c_max.real()
-            - model.config.mandelbrot_cfg.c_min.real())
-            / f64::from(model.width);
-        let scale_imag = (model.config.mandelbrot_cfg.c_max.imag()
-            - model.config.mandelbrot_cfg.c_min.imag())
-            / f64::from(model.height);
+        let scale_real = (config.mandelbrot_cfg.c_max.real()
+            - config.mandelbrot_cfg.c_min.real())
+            / f64::from(config.canvas_width);
+        let scale_imag = (config.mandelbrot_cfg.c_max.imag()
+            - config.mandelbrot_cfg.c_min.imag())
+            / f64::from(config.canvas_height);
 
         Self {
             scale_real,
             scale_imag,
-            offset: model.config.mandelbrot_cfg.c_min,
+            offset: config.mandelbrot_cfg.c_min,
             x_curr: 0,
             y_curr: 0,
-            width: model.width,
-            height: model.height,
-            iterations: model.config.mandelbrot_cfg.max_iterations,
+            width: config.canvas_width,
+            height: config.canvas_height,
+            iterations: config.mandelbrot_cfg.max_iterations,
             res: Points::default(),
             done: false,
         }

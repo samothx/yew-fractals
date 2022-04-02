@@ -1,11 +1,11 @@
 use yew::prelude::*;
 use crate::components::root::{JuliaSetCfg, MandelbrotCfg, FractalType};
-use crate::agents::command_msg_bus::{CommandMsgBus, Request};
+use crate::agents::command_msg_bus::{CommandMsgBus, CommandRequest};
 use yew_agent::{Dispatcher, Dispatched};
 use web_sys::{HtmlSelectElement, HtmlInputElement};
 
 pub struct ControlPanel {
-    event_bus: Dispatcher<CommandMsgBus>,
+    event_bus: Option<Dispatcher<CommandMsgBus>>,
     paused: bool,
     type_sel_ref: NodeRef,
     view_stats_cb_ref: NodeRef,
@@ -17,7 +17,7 @@ impl Component for ControlPanel {
 
     fn create(_ctx: &Context<Self>) -> Self {
         ControlPanel {
-            event_bus: CommandMsgBus::dispatcher(),
+            event_bus: None,
             paused: true,
             type_sel_ref: NodeRef::default(),
             view_stats_cb_ref: NodeRef::default(),
@@ -30,23 +30,27 @@ impl Component for ControlPanel {
                 info!("ControlPanel::Start");
                 if self.paused && !ctx.props().edit_mode {
                     self.paused = false;
-                    self.event_bus.send(Request::Start);
+                    self.event_bus.as_mut().expect("Eventbus not initialized")
+                        .send(CommandRequest::Start);
                 }
             }
             Msg::Stop => {
                 info!("ControlPanel::Stop");
                 if !self.paused {
                     self.paused = true;
-                    self.event_bus.send(Request::Stop);
+                    self.event_bus.as_mut().expect("Eventbus not initialized")
+                        .send(CommandRequest::Stop);
                 }
             }
             Msg::Clear => {
                 info!("ControlPanel::Clear");
                 if !self.paused {
                     self.paused = true;
-                    self.event_bus.send(Request::Stop);
+                    self.event_bus.as_mut().expect("Eventbus not initialized")
+                        .send(CommandRequest::Stop);
                 }
-                self.event_bus.send(Request::Clear);
+                self.event_bus.as_mut().expect("Eventbus not initialized")
+                    .send(CommandRequest::Clear);
             }
             Msg::Edit => {
                 info!("ControlPanel::Edit");
@@ -66,7 +70,9 @@ impl Component for ControlPanel {
                         None
                     }
                 };
+
                 if let Some(fractal_type) = fractal_type {
+                    self.event_bus.as_mut().expect("Eventbus not initialized").send(CommandRequest::Clear);
                     ctx.props().on_type_changed.emit(fractal_type)
                 }
             },
@@ -83,10 +89,11 @@ impl Component for ControlPanel {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let sel_type = match ctx.props().config {
-            PanelConfig::ConfigMandelbrot(_) => "Mandelbrot",
-            PanelConfig::ConfigJuliaSet(_) => "Julia Set",
+            PanelConfig::ConfigMandelbrot(_) => "type_mandelbrot",
+            PanelConfig::ConfigJuliaSet(_) => "type_julia_set",
         };
 
+        info!("ControlPanel::view initial type {}", sel_type);
         let on_start = ctx.link().callback(|_| Msg::Start);
         let on_stop = ctx.link().callback(|_| Msg::Stop);
         let on_edit = ctx.link().callback(|_| Msg::Edit);
@@ -120,8 +127,8 @@ impl Component for ControlPanel {
                     disabled={!self.paused || ctx.props().edit_mode } onchange={on_type_changed}
                     ref={self.type_sel_ref.clone()}
                     >
-                    <option value="type_mandelbrot">{"Mandelbrot Set"}</option>
-                    <option value="type_julia_set">{"Julia Set"}</option>
+                    <option value="type_mandelbrot" selected={sel_type=="type_mandelbrot"}>{"Mandelbrot Set"}</option>
+                    <option value="type_julia_set" selected={sel_type=="type_julia_set"}>{"Julia Set"}</option>
                 </select>
                 <div class="cb_stats_cntr">
                     <label class="type_select_label" for="stats_cb">
@@ -140,6 +147,12 @@ impl Component for ControlPanel {
                 </div>
             </div>
         ]
+    }
+
+    fn rendered(&mut self, ctx: &Context<Self>, first_render: bool) {
+        if self.event_bus.is_none() {
+            self.event_bus = Some(CommandMsgBus::dispatcher());
+        }
     }
 }
 

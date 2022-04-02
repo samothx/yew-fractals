@@ -19,20 +19,15 @@ pub const MANDELBROT_DEFAULT_C_MAX: (f64, f64) = (0.47, 1.12);
 pub const MANDELBROT_DEFAULT_C_MIN: (f64, f64) = (-2.00, -1.12);
 pub const MANDELBROT_DEFAULT_ITERATIONS: u32 = 400;
 
-const DEFAULT_WIDTH: u32 = 1024;
-const DEFAULT_HEIGHT: u32 = 800;
+const STORAGE_KEY: &str = "yew_fractals_v2";
 
-
-const STORAGE_KEY: &str = "yew_fractals_v1";
-
+pub const DEFAULT_WIDTH: u32 = 1024;
 
 // TODO: make canvas its own component and setup communication with editors
 
 pub struct Root {
     config: Config,
-    canvas_width: u32,
-    canvas_height: u32,
-    edit_mode: bool
+    edit_mode: bool,
 }
 
 impl Component for Root {
@@ -42,14 +37,29 @@ impl Component for Root {
     fn create(_ctx: &Context<Self>) -> Self {
         Self {
             config: Config::default(),
-            canvas_width: DEFAULT_WIDTH,
-            canvas_height: DEFAULT_HEIGHT,
-            edit_mode: false
+            edit_mode: false,
         }
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, _msg: Self::Message) -> bool {
-        false
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+        match msg {
+            Msg::JuliaSetCfgChanged(config) => {
+                false
+            },
+            Msg::JuliaSetCfgCanceled => {
+                false
+            },
+            Msg::TypeChanged(fractal_type) => {
+                self.config.active_config = fractal_type;
+                true
+            },
+            Msg::ViewStatsChanged(status) => {
+                false
+            },
+            Msg::EditConfig=> {
+                false
+            }
+        }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
@@ -72,13 +82,13 @@ impl Component for Root {
                         edit_mode={self.edit_mode}
                     />
                     <div class="fractal_container">
-                        <EditJuliaCfg config={self.config.julia_set_cfg.clone()}
-                                      cb_saved={ctx.link().callback(|config: JuliaSetCfg| Msg::JuliaSetCfgChanged(config))}
-                                      cb_canceled={ctx.link().callback(|_| Msg::JuliaSetCfgCanceled)}
+                        <EditJuliaCfg edit_mode={self.edit_mode && self.config.active_config == FractalType::JuliaSet}
+                                        config={self.config.julia_set_cfg.clone()}
+                                        cb_saved={ctx.link().callback(|config: JuliaSetCfg| Msg::JuliaSetCfgChanged(config))}
+                                        cb_canceled={ctx.link().callback(|_| Msg::JuliaSetCfgCanceled)}
                         />
                         <CanvasElement
-                            width={self.canvas_width}
-                            height={self.canvas_height}
+                            config={self.config.clone()}
                             edit_mode={self.edit_mode}
                         />
                     </div>
@@ -96,12 +106,15 @@ pub enum Msg {
     EditConfig,
 }
 
-#[derive(Serialize, Deserialize)]
-struct Config {
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct Config {
     pub view_stats: bool,
     pub active_config: FractalType,
     pub julia_set_cfg: JuliaSetCfg,
     pub mandelbrot_cfg: MandelbrotCfg,
+    pub canvas_width: u32,
+    pub canvas_height: u32,
+
 }
 
 impl Default for Config {
@@ -109,12 +122,21 @@ impl Default for Config {
         match window().expect("window no found")
             .local_storage().expect("error retrieving storage").expect("no storage available")
             .get(STORAGE_KEY).expect("error retrieving key from storage") {
-            Some(config_str) => serde_json::from_str(config_str.as_str()).expect("Deserialization of cofig failed"),
-            None => Self {
-                view_stats: false,
-                active_config: FractalType::Mandelbrot,
-                julia_set_cfg: JuliaSetCfg::default(),
-                mandelbrot_cfg: MandelbrotCfg::default(),
+            Some(config_str) => serde_json::from_str(config_str.as_str()).expect("Deserialization of config failed"),
+            None => {
+                let def_config = MandelbrotCfg::default();
+                let height = (f64::from(DEFAULT_WIDTH) *
+                    (def_config.c_max.imag() - def_config.c_min.imag()) /
+                    (def_config.c_max.real() - def_config.c_min.real())) as u32;
+                Self {
+                    view_stats: false,
+                    active_config: FractalType::Mandelbrot,
+                    julia_set_cfg: JuliaSetCfg::default(),
+                    mandelbrot_cfg: def_config,
+                    canvas_width: DEFAULT_WIDTH,
+                    canvas_height: height,
+
+                }
             }
         }
     }

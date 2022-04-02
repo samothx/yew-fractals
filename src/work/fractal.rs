@@ -1,6 +1,7 @@
 use super::stats::Stats;
 
 const MAX_POINTS: usize = 5000;
+pub const MAX_DURATION: f64 = 200.0;
 
 pub struct Points {
     pub x_start: u32,

@@ -3,12 +3,8 @@ use std::collections::HashSet;
 use yew_agent::{Agent, AgentLink, Context, HandlerId};
 
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum Request {
-    Start,
-    Stop,
-    Clear,
-}
+/// CommandMsgBus
+/// Transmits messages from the control panel component to the canvas component
 
 pub struct CommandMsgBus {
     link: AgentLink<CommandMsgBus>,
@@ -18,8 +14,8 @@ pub struct CommandMsgBus {
 impl Agent for CommandMsgBus {
     type Reach = Context<Self>;
     type Message = ();
-    type Input = Request;
-    type Output = Request;
+    type Input = CommandRequest;
+    type Output = CommandRequest;
 
     fn create(link: AgentLink<Self>) -> Self {
         Self {
@@ -44,3 +40,11 @@ impl Agent for CommandMsgBus {
         self.subscribers.remove(&id);
     }
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum CommandRequest {
+    Start,
+    Stop,
+    Clear,
+}
+
