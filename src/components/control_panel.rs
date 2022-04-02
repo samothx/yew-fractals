@@ -78,7 +78,7 @@ impl Component for ControlPanel {
             },
             Msg::ViewStatsChanged => {
                 info!("ControlPanel::ViewStatsChanged");
-                let checked = self.type_sel_ref.cast::<HtmlInputElement>()
+                let checked = self.view_stats_cb_ref.cast::<HtmlInputElement>()
                     .expect("Type select not found")
                     .checked();
                 ctx.props().on_view_stats_changed.emit(checked);

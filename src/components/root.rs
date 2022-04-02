@@ -8,6 +8,7 @@ use super::{disclaimer::Disclaimer, control_panel::ControlPanel, canvas_element:
             edit_julia_cfg::EditJuliaCfg,
             edit_mandelbrot_cfg::EditMandelbrotCfg,
             control_panel::PanelConfig::{ConfigJuliaSet, ConfigMandelbrot}};
+use web_sys::console::info_0;
 
 
 pub const JULIA_DEFAULT_X_MAX: (f64, f64) = (1.5, 1.0);
@@ -20,7 +21,8 @@ pub const MANDELBROT_DEFAULT_C_MAX: (f64, f64) = (0.47, 1.12);
 pub const MANDELBROT_DEFAULT_C_MIN: (f64, f64) = (-2.00, -1.12);
 pub const MANDELBROT_DEFAULT_ITERATIONS: u32 = 400;
 
-const STORAGE_KEY: &str = "yew_fractals_v2";
+const STORAGE_KEY: &str = "yew_fractals_v2.1";
+const DEBUG_NO_STORAGE: bool = true;
 
 pub const DEFAULT_WIDTH: u32 = 1024;
 
@@ -45,11 +47,15 @@ impl Component for Root {
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::JuliaSetCfgChanged(config) => {
+                self.edit_mode = false;
                 self.config.julia_set_cfg = config;
+                self.config.store();
                 true
             },
             Msg::MandelbrotCfgChanged(config) => {
+                self.edit_mode = false;
                 self.config.mandelbrot_cfg = config;
+                self.config.store();
                 true
             },
             Msg::EditCfgCanceled => {
@@ -58,10 +64,14 @@ impl Component for Root {
             },
             Msg::TypeChanged(fractal_type) => {
                 self.config.active_config = fractal_type;
+                self.config.store();
                 true
             },
             Msg::ViewStatsChanged(status) => {
-                false
+                info!("Root::update: ViewStatsChanged: {}", status);
+                self.config.view_stats = status;
+                self.config.store();
+                true
             },
             Msg::EditConfig=> {
                 self.edit_mode = true;
@@ -128,30 +138,47 @@ pub struct Config {
     pub mandelbrot_cfg: MandelbrotCfg,
     pub canvas_width: u32,
     pub canvas_height: u32,
-
 }
 
 impl Default for Config {
     fn default() -> Self {
-        match window().expect("window no found")
-            .local_storage().expect("error retrieving storage").expect("no storage available")
-            .get(STORAGE_KEY).expect("error retrieving key from storage") {
-            Some(config_str) => serde_json::from_str(config_str.as_str()).expect("Deserialization of config failed"),
-            None => {
-                let def_config = MandelbrotCfg::default();
-                let height = (f64::from(DEFAULT_WIDTH) *
-                    (def_config.c_max.imag() - def_config.c_min.imag()) /
-                    (def_config.c_max.real() - def_config.c_min.real())) as u32;
-                Self {
-                    view_stats: false,
-                    active_config: FractalType::Mandelbrot,
-                    julia_set_cfg: JuliaSetCfg::default(),
-                    mandelbrot_cfg: def_config,
-                    canvas_width: DEFAULT_WIDTH,
-                    canvas_height: height,
-
+        if DEBUG_NO_STORAGE {
+            Self::std_cfg()
+        } else {
+            match window().expect("window no found")
+                .local_storage().expect("error retrieving storage").expect("no storage available")
+                .get(STORAGE_KEY).expect("error retrieving key from storage") {
+                Some(config_str) => serde_json::from_str(config_str.as_str()).expect("Deserialization of config failed"),
+                None => {
+                    Self::std_cfg()
                 }
             }
+        }
+    }
+}
+
+impl Config {
+    pub fn store(&self) {
+        if DEBUG_NO_STORAGE {} else {
+            let config_str = serde_json::to_string(self).expect("Serialization of config failed");
+            window().expect("window no found")
+                .local_storage().expect("error retrieving storage").expect("no storage available")
+                .set(STORAGE_KEY, config_str.as_str()).expect("error writing key to storage");
+        }
+    }
+
+    fn std_cfg() -> Self {
+        let def_config = MandelbrotCfg::default();
+        let height = (f64::from(DEFAULT_WIDTH) *
+            (def_config.c_max.imag() - def_config.c_min.imag()) /
+            (def_config.c_max.real() - def_config.c_min.real())) as u32;
+        Self {
+            view_stats: false,
+            active_config: FractalType::Mandelbrot,
+            julia_set_cfg: JuliaSetCfg::default(),
+            mandelbrot_cfg: def_config,
+            canvas_width: DEFAULT_WIDTH,
+            canvas_height: height,
         }
     }
 }
@@ -169,7 +196,7 @@ impl Default for JuliaSetCfg {
         Self {
             max_iterations: JULIA_DEFAULT_ITERATIONS,
             x_max: Complex::new(JULIA_DEFAULT_X_MAX.0, JULIA_DEFAULT_X_MAX.1),
-            x_min: Complex::new(-JULIA_DEFAULT_X_MIN.0, -JULIA_DEFAULT_X_MIN.1),
+            x_min: Complex::new(JULIA_DEFAULT_X_MIN.0, JULIA_DEFAULT_X_MIN.1),
             c: Complex::new(JULIA_DEFAULT_C.0, JULIA_DEFAULT_C.1),
         }
     }

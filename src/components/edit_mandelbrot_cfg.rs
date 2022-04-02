@@ -83,7 +83,7 @@ impl Component for EditMandelbrotCfg {
                         ctx.props().config.c_max.imag()
                     }, |v| v);
 
-                let c_min_real = get_f64_from_ref(&self.c_max_real_ref, "c_min_real")
+                let c_min_real = get_f64_from_ref(&self.c_min_real_ref, "c_min_real")
                     .map_or_else(|err| {
                         error!("{}",err.as_str());
                         ctx.props().config.c_min.real()
@@ -128,15 +128,21 @@ impl Component for EditMandelbrotCfg {
                     .map_or_else(|err| {
                         error!("{}",err.as_str());
                     }, |v| v);
-                true
+                false
             }
             Msg::ZoomOut => {
                 info!("EditMandelbrotCfg: got msg ZoomOut");
-                true
+                false
             }
             Msg::ResetParams => {
                 info!("EditMandelbrotCfg: got msg ResetParams");
-                true
+                set_value_on_ref(&self.iter_ref,
+                                 "max_iterations",
+                                 MANDELBROT_DEFAULT_ITERATIONS.to_string().as_str())
+                    .map_or_else(|err| {
+                        error!("{}",err.as_str());
+                    }, |v| v);
+                false
             }
             Msg::CanvasMsg(canvas_msg) => {
                 match canvas_msg {
@@ -174,7 +180,7 @@ impl Component for EditMandelbrotCfg {
                                 .map_or_else(|err| {
                                     error!("{}",err.as_str());
                                 }, |v| v);
-                            true
+                            false
                         } else {
                             false
                         }
@@ -212,21 +218,23 @@ impl Component for EditMandelbrotCfg {
                     </button>
                 </div>
                 <div class="input_cntr">
-                    <div class="input_inner">
+                    <div class="input_cntr">
                         <div class="area_cntr">
                             <div class="input_inner">
                                 <label class="input_label" for="mandelbrot_c_max_real">
                                     {"C Max. Real"}
                                 </label>
                                 <input class="input" id="mandelbrot_c_max_real" name="mandelbrot_c_max_real"
-                                    type="number" step="0.0000001" ref={self.c_max_real_ref.clone()}/>
+                                    type="number" step="0.0000001" ref={self.c_max_real_ref.clone()}
+                                    value={ctx.props().config.c_max.real().to_string()} />
                             </div>
                             <div class="input_inner">
                                 <label class="input_label" for="mandelbrot_c_min_real">
                                     {"C Min. Real"}
                                 </label>
                                 <input class="input" id="mandelbrot_c_min_real" name="mandelbrot_c_min_real"
-                                    type="number" step="0.0000001" ref={self.c_min_real_ref.clone()}/>
+                                    type="number" step="0.0000001" ref={self.c_min_real_ref.clone()}
+                                    value={ctx.props().config.c_min.real().to_string()}/>
                             </div>
                         </div>
                         <div class="area_cntr">
@@ -235,14 +243,16 @@ impl Component for EditMandelbrotCfg {
                                     {"C Max. Imag"}
                                 </label>
                                 <input class="input" id="mandelbrot_c_max_imag" name="mandelbrot_c_max_imag"
-                                    type="number" step="0.0000001" ref={self.c_max_imag_ref.clone()}/>
+                                    type="number" step="0.0000001" ref={self.c_max_imag_ref.clone()}
+                                    value={ctx.props().config.c_max.imag().to_string()}/>
                             </div>
                             <div class="input_inner">
                                 <label class="input_label" for="mandelbrot_c_min_imag">
                                     {"C Min. Imag"}
                                 </label>
                                 <input class="input" id="mandelbrot_c_min_imag" name="mandelbrot_c_min_imag"
-                                    type="number" step="0.0000001" ref={self.c_min_imag_ref.clone()}/>
+                                    type="number" step="0.0000001" ref={self.c_min_imag_ref.clone()}
+                                    value={ctx.props().config.c_min.imag().to_string()}/>
                             </div>
                         </div>
                         <div class="area_cntr">

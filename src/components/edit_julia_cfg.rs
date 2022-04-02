@@ -1,11 +1,10 @@
-
 // use yew::{Component, Context, Html, Callback};
 use yew::prelude::*;
 use super::root::{JuliaSetCfg};
 use web_sys::Element;
 use crate::work::util::{get_u32_from_ref, get_f64_from_ref, set_value_on_ref};
 use crate::work::complex::Complex;
-use crate::components::root::{JULIA_DEFAULT_X_MAX, JULIA_DEFAULT_X_MIN};
+use crate::components::root::{JULIA_DEFAULT_X_MAX, JULIA_DEFAULT_X_MIN, JULIA_DEFAULT_ITERATIONS};
 use crate::agents::canvas_msg_bus::{CanvasSelectMsgBus, CanvasMsgRequest};
 use yew_agent::{Bridge, Bridged};
 
@@ -15,7 +14,7 @@ pub enum Msg {
     ResetArea,
     SaveConfig,
     Cancel,
-    CanvasMsg(CanvasMsgRequest)
+    CanvasMsg(CanvasMsgRequest),
 }
 
 pub struct EditJuliaCfg {
@@ -29,14 +28,14 @@ pub struct EditJuliaCfg {
     x_max_imag_ref: NodeRef,
     _producer: Box<dyn Bridge<CanvasSelectMsgBus>>,
 }
-    // config: Option<JuliaSetCfg>
+// config: Option<JuliaSetCfg>
 
-impl  Component for EditJuliaCfg {
+impl Component for EditJuliaCfg {
     type Message = Msg;
     type Properties = EditJuliaCfgProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        EditJuliaCfg{
+        EditJuliaCfg {
             container_ref: NodeRef::default(),
             iter_ref: NodeRef::default(),
             c_real_ref: NodeRef::default(),
@@ -61,7 +60,7 @@ impl  Component for EditJuliaCfg {
                 ctx.props().cb_canceled.emit(());
                 // self.config = None;
                 false
-            },
+            }
             Msg::SaveConfig => {
                 info!("EditJuliaCfg: got msg SaveConfig");
                 self.container_ref
@@ -100,7 +99,7 @@ impl  Component for EditJuliaCfg {
                         ctx.props().config.x_max.imag()
                     }, |v| v);
 
-                let x_min_real = get_f64_from_ref(&self.x_max_real_ref, "x_min_real")
+                let x_min_real = get_f64_from_ref(&self.x_min_real_ref, "x_min_real")
                     .map_or_else(|err| {
                         error!("{}",err.as_str());
                         ctx.props().config.x_min.real()
@@ -112,14 +111,14 @@ impl  Component for EditJuliaCfg {
                         ctx.props().config.x_min.imag()
                     }, |v| v);
 
-                ctx.props().cb_saved.emit(JuliaSetCfg{
+                ctx.props().cb_saved.emit(JuliaSetCfg {
                     max_iterations,
                     c: Complex::new(c_real, c_imag),
                     x_max: Complex::new(x_max_real, x_max_imag),
-                    x_min: Complex::new(x_min_real, x_min_imag)
+                    x_min: Complex::new(x_min_real, x_min_imag),
                 });
                 false
-            },
+            }
             Msg::ResetArea => {
                 info!("EditJuliaCfg: got msg ResetArea");
                 set_value_on_ref(&self.x_max_real_ref,
@@ -146,15 +145,21 @@ impl  Component for EditJuliaCfg {
                     .map_or_else(|err| {
                         error!("{}",err.as_str());
                     }, |v| v);
-                true
-            },
+                false
+            }
             Msg::ZoomOut => {
                 info!("EditJuliaCfg: got msg ZoomOut");
-                true
-            },
+                false
+            }
             Msg::ResetParams => {
                 info!("EditJuliaCfg: got msg ResetParams");
-                true
+                set_value_on_ref(&self.iter_ref,
+                                 "max_iterations",
+                                 JULIA_DEFAULT_ITERATIONS.to_string().as_str())
+                    .map_or_else(|err| {
+                        error!("{}",err.as_str());
+                    }, |v| v);
+                false
             }
             Msg::CanvasMsg(canvas_msg) => {
                 info!("EditJuliaCfg: got msg CanvasMsg");
@@ -192,7 +197,7 @@ impl  Component for EditJuliaCfg {
                                 .map_or_else(|err| {
                                     error!("{}",err.as_str());
                                 }, |v| v);
-                            true
+                            false
                         } else {
                             false
                         }
@@ -222,21 +227,24 @@ impl  Component for EditJuliaCfg {
                             {"Iterations"}
                         </label>
                         <input class="input" id="julia_iterations" name="julia_iterations"
-                            type="number" min="100" max="1000" ref={self.iter_ref.clone()}/>
+                            type="number" min="100" max="1000" ref={self.iter_ref.clone()}
+                            value={ctx.props().config.max_iterations.to_string()}/>
                     </div>
                     <div class="input_inner">
                         <label class="input_label" for="julia_c_real">
                             {"C Real"}
                         </label>
                         <input class="input" id="julia_c_real" name="julia_c_real"
-                            type="number" step="0.0000001"/>
+                            type="number" step="0.0000001" ref={self.c_real_ref.clone()}
+                            value={ctx.props().config.c.real().to_string()}/>
                     </div>
                     <div class="input_inner">
                         <label class="input_label" for="julia_c_imag">
                             {"C Imag"}
                         </label>
                         <input class="input" id="julia_c_imag" name="julia_c_imag"
-                            type="number" step="0.0000001"/>
+                            type="number" step="0.0000001" ref={self.c_imag_ref.clone()}
+                            value={ctx.props().config.c.imag().to_string()}/>
                     </div>
                     <button class="editor_button" id="julia_reset_params" onclick={reset_params}>
                         {"Reset to Default"}
@@ -247,33 +255,37 @@ impl  Component for EditJuliaCfg {
                         <div class="area_cntr">
                             <div class="input_inner">
                                 <label class="input_label" for="julia_max_real">
-                                    {"Max. Real"}
+                                    {"X Max. Real"}
                                 </label>
                                 <input class="input" id="julia_max_real" name="julia_max_real"
-                                    type="number" step="0.0000001"/>
+                                    type="number" step="0.0000001" ref={self.x_max_real_ref.clone()}
+                                    value={ctx.props().config.x_max.real().to_string()}/>
                             </div>
                             <div class="input_inner">
                                 <label class="input_label" for="julia_min_real">
-                                    {"Min. Real"}
+                                    {"X Min. Real"}
                                 </label>
                                 <input class="input" id="julia_min_real" name="julia_min_real"
-                                    type="number" step="0.0000001"/>
+                                    type="number" step="0.0000001" ref={self.x_min_real_ref.clone()}
+                                    value={ctx.props().config.x_min.real().to_string()}/>
                             </div>
                         </div>
                         <div class="area_cntr">
                             <div class="input_inner">
                                 <label class="input_label" for="julia_max_imag">
-                                    {"Max. Imag"}
+                                    {"X Max. Imag"}
                                 </label>
                                 <input class="input" id="julia_max_imag" name="julia_max_imag"
-                                    type="number" step="0.0000001"/>
+                                    type="number" step="0.0000001" ref={self.x_max_imag_ref.clone()}
+                                    value={ctx.props().config.x_max.imag().to_string()}/>
                             </div>
                             <div class="input_inner">
                                 <label class="input_label" for="julia_min_imag">
-                                    {"Min. Imag"}
+                                    {"X Min. Imag"}
                                 </label>
                                 <input class="input" id="julia_min_imag" name="julia_min_imag"
-                                    type="number" step="0.0000001"/>
+                                    type="number" step="0.0000001" ref={self.x_min_imag_ref.clone()}
+                                    value={ctx.props().config.x_min.imag().to_string()}/>
                             </div>
                         </div>
                         <div class="area_cntr">
@@ -301,7 +313,7 @@ impl  Component for EditJuliaCfg {
     }
 }
 
-#[derive(Properties,PartialEq, Clone)]
+#[derive(Properties, PartialEq, Clone)]
 pub struct EditJuliaCfgProps {
     pub edit_mode: bool,
     pub config: JuliaSetCfg,
