@@ -8,7 +8,6 @@ use super::{disclaimer::Disclaimer, control_panel::ControlPanel, canvas_element:
             edit_julia_cfg::EditJuliaCfg,
             edit_mandelbrot_cfg::EditMandelbrotCfg,
             control_panel::PanelConfig::{ConfigJuliaSet, ConfigMandelbrot}};
-use web_sys::console::info_0;
 
 
 pub const JULIA_DEFAULT_X_MAX: (f64, f64) = (1.5, 1.0);
