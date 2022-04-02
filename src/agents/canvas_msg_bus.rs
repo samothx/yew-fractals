@@ -4,6 +4,7 @@ use yew_agent::{Agent, AgentLink, Context, HandlerId};
 
 /// CanvasSelectMsgBus
 /// Transmits messages from the canvas component to the root component
+/// and the config editor components
 
 pub struct CanvasSelectMsgBus {
     link: AgentLink<CanvasSelectMsgBus>,
@@ -13,8 +14,8 @@ pub struct CanvasSelectMsgBus {
 impl Agent for CanvasSelectMsgBus {
     type Reach = Context<Self>;
     type Message = ();
-    type Input = CanvasSelectRequest;
-    type Output = (u32,u32,u32,u32);
+    type Input = CanvasMsgRequest;
+    type Output = CanvasMsgRequest;
 
     fn create(link: AgentLink<Self>) -> Self {
         Self {
@@ -26,12 +27,8 @@ impl Agent for CanvasSelectMsgBus {
     fn update(&mut self, _msg: Self::Message) {}
 
     fn handle_input(&mut self, msg: Self::Input, _id: HandlerId) {
-        match msg {
-            CanvasSelectRequest::CanvasSelectMsg(s) => {
-                for sub in self.subscribers.iter() {
-                    self.link.respond(*sub, s.clone());
-                }
-            }
+        for sub in self.subscribers.iter() {
+            self.link.respond(*sub, msg.clone());
         }
     }
 
@@ -44,8 +41,8 @@ impl Agent for CanvasSelectMsgBus {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub enum CanvasSelectRequest {
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum CanvasMsgRequest {
     CanvasSelectMsg((u32,u32,u32,u32)),
 }
 

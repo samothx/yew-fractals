@@ -6,6 +6,7 @@ use serde::{Serialize, Deserialize};
 use crate::work::complex::Complex;
 use super::{disclaimer::Disclaimer, control_panel::ControlPanel, canvas_element::CanvasElement,
             edit_julia_cfg::EditJuliaCfg,
+            edit_mandelbrot_cfg::EditMandelbrotCfg,
             control_panel::PanelConfig::{ConfigJuliaSet, ConfigMandelbrot}};
 
 
@@ -44,10 +45,16 @@ impl Component for Root {
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::JuliaSetCfgChanged(config) => {
-                false
+                self.config.julia_set_cfg = config;
+                true
             },
-            Msg::JuliaSetCfgCanceled => {
-                false
+            Msg::MandelbrotCfgChanged(config) => {
+                self.config.mandelbrot_cfg = config;
+                true
+            },
+            Msg::EditCfgCanceled => {
+                self.edit_mode = false;
+                true
             },
             Msg::TypeChanged(fractal_type) => {
                 self.config.active_config = fractal_type;
@@ -57,7 +64,8 @@ impl Component for Root {
                 false
             },
             Msg::EditConfig=> {
-                false
+                self.edit_mode = true;
+                true
             }
         }
     }
@@ -85,7 +93,12 @@ impl Component for Root {
                         <EditJuliaCfg edit_mode={self.edit_mode && self.config.active_config == FractalType::JuliaSet}
                                         config={self.config.julia_set_cfg.clone()}
                                         cb_saved={ctx.link().callback(|config: JuliaSetCfg| Msg::JuliaSetCfgChanged(config))}
-                                        cb_canceled={ctx.link().callback(|_| Msg::JuliaSetCfgCanceled)}
+                                        cb_canceled={ctx.link().callback(|_| Msg::EditCfgCanceled)}
+                        />
+                        <EditMandelbrotCfg edit_mode={self.edit_mode && self.config.active_config == FractalType::Mandelbrot}
+                                        config={self.config.mandelbrot_cfg.clone()}
+                                        cb_saved={ctx.link().callback(|config: MandelbrotCfg| Msg::MandelbrotCfgChanged(config))}
+                                        cb_canceled={ctx.link().callback(|_| Msg::EditCfgCanceled)}
                         />
                         <CanvasElement
                             config={self.config.clone()}
@@ -100,7 +113,8 @@ impl Component for Root {
 
 pub enum Msg {
     JuliaSetCfgChanged(JuliaSetCfg),
-    JuliaSetCfgCanceled,
+    MandelbrotCfgChanged(MandelbrotCfg),
+    EditCfgCanceled,
     TypeChanged(FractalType),
     ViewStatsChanged(bool),
     EditConfig,

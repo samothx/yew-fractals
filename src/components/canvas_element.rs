@@ -6,7 +6,7 @@ use js_sys::Object;
 use web_sys::{ImageData, HtmlCanvasElement, CanvasRenderingContext2d};
 
 use super::root::Config;
-use crate::agents::canvas_msg_bus::{CanvasSelectMsgBus, CanvasSelectRequest};
+use crate::agents::canvas_msg_bus::{CanvasSelectMsgBus, CanvasMsgRequest};
 use crate::agents::command_msg_bus::{CommandMsgBus, CommandRequest as CommandRequest};
 use crate::work::fractal::Fractal;
 
@@ -89,7 +89,7 @@ impl Component for CanvasElement {
                     }
                     self.mouse_drag = None;
                     if let Some(canvas_coords) = canvas_coords {
-                        self.event_bus.send(CanvasSelectRequest::CanvasSelectMsg(canvas_coords));
+                        self.event_bus.send(CanvasMsgRequest::CanvasSelectMsg(canvas_coords));
                     }
                     res = true;
                 }

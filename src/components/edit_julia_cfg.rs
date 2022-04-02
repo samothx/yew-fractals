@@ -6,7 +6,7 @@ use web_sys::Element;
 use crate::work::util::{get_u32_from_ref, get_f64_from_ref, set_value_on_ref};
 use crate::work::complex::Complex;
 use crate::components::root::{JULIA_DEFAULT_X_MAX, JULIA_DEFAULT_X_MIN};
-use crate::agents::canvas_msg_bus::CanvasSelectMsgBus;
+use crate::agents::canvas_msg_bus::{CanvasSelectMsgBus, CanvasMsgRequest};
 use yew_agent::{Bridge, Bridged};
 
 pub enum Msg {
@@ -15,7 +15,7 @@ pub enum Msg {
     ResetArea,
     SaveConfig,
     Cancel,
-    CanvasSelect((u32,u32,u32,u32))
+    CanvasMsg(CanvasMsgRequest)
 }
 
 pub struct EditJuliaCfg {
@@ -45,7 +45,7 @@ impl  Component for EditJuliaCfg {
             x_max_imag_ref: NodeRef::default(),
             x_min_real_ref: NodeRef::default(),
             x_min_imag_ref: NodeRef::default(),
-            _producer: CanvasSelectMsgBus::bridge(ctx.link().callback(Msg::CanvasSelect)),
+            _producer: CanvasSelectMsgBus::bridge(ctx.link().callback(Msg::CanvasMsg)),
         }
     }
 
@@ -156,43 +156,46 @@ impl  Component for EditJuliaCfg {
                 info!("EditJuliaCfg: got msg ResetParams");
                 true
             }
-            Msg::CanvasSelect(coords) => {
-                info!("EditJuliaCfg: got msg CanvasSelect");
-                if ctx.props().edit_mode {
-                    // TODO: implement
-                    let x_scale = ctx.props().config.x_max.real() - ctx.props().config.x_min.real();
-                    let y_scale = ctx.props().config.x_max.imag() - ctx.props().config.x_min.imag();
-                    let x_min = ctx.props().config.x_min.real() + x_scale * f64::from(coords.0);
-                    let y_min = ctx.props().config.x_min.imag() + y_scale * f64::from(coords.1);
-                    let x_max = ctx.props().config.x_max.real() + x_scale * f64::from(coords.2);
-                    let y_max = ctx.props().config.x_max.imag() + y_scale * f64::from(coords.3);
-                    set_value_on_ref(&self.x_max_real_ref,
-                                     "x_max_real",
-                                     x_max.to_string().as_str())
-                        .map_or_else(|err| {
-                            error!("{}",err.as_str());
-                        }, |v| v);
-                    set_value_on_ref(&self.x_max_imag_ref,
-                                     "x_max_imag",
-                                     y_max.to_string().as_str())
-                        .map_or_else(|err| {
-                            error!("{}",err.as_str());
-                        }, |v| v);
-                    set_value_on_ref(&self.x_min_real_ref,
-                                     "x_min_real",
-                                     x_min.to_string().as_str())
-                        .map_or_else(|err| {
-                            error!("{}",err.as_str());
-                        }, |v| v);
-                    set_value_on_ref(&self.x_min_imag_ref,
-                                     "x_min_imag",
-                                     y_min.to_string().as_str())
-                        .map_or_else(|err| {
-                            error!("{}",err.as_str());
-                        }, |v| v);
-                    true
-                } else {
-                    false
+            Msg::CanvasMsg(canvas_msg) => {
+                info!("EditJuliaCfg: got msg CanvasMsg");
+                match canvas_msg {
+                    CanvasMsgRequest::CanvasSelectMsg(coords) =>
+                        if ctx.props().edit_mode {
+                            // TODO: implement
+                            let x_scale = ctx.props().config.x_max.real() - ctx.props().config.x_min.real();
+                            let y_scale = ctx.props().config.x_max.imag() - ctx.props().config.x_min.imag();
+                            let x_min = ctx.props().config.x_min.real() + x_scale * f64::from(coords.0);
+                            let y_min = ctx.props().config.x_min.imag() + y_scale * f64::from(coords.1);
+                            let x_max = ctx.props().config.x_max.real() + x_scale * f64::from(coords.2);
+                            let y_max = ctx.props().config.x_max.imag() + y_scale * f64::from(coords.3);
+                            set_value_on_ref(&self.x_max_real_ref,
+                                             "x_max_real",
+                                             x_max.to_string().as_str())
+                                .map_or_else(|err| {
+                                    error!("{}",err.as_str());
+                                }, |v| v);
+                            set_value_on_ref(&self.x_max_imag_ref,
+                                             "x_max_imag",
+                                             y_max.to_string().as_str())
+                                .map_or_else(|err| {
+                                    error!("{}",err.as_str());
+                                }, |v| v);
+                            set_value_on_ref(&self.x_min_real_ref,
+                                             "x_min_real",
+                                             x_min.to_string().as_str())
+                                .map_or_else(|err| {
+                                    error!("{}",err.as_str());
+                                }, |v| v);
+                            set_value_on_ref(&self.x_min_imag_ref,
+                                             "x_min_imag",
+                                             y_min.to_string().as_str())
+                                .map_or_else(|err| {
+                                    error!("{}",err.as_str());
+                                }, |v| v);
+                            true
+                        } else {
+                            false
+                        }
                 }
             }
         }
@@ -204,8 +207,10 @@ impl  Component for EditJuliaCfg {
         let zoom_out = ctx.link().callback(|_| Msg::ZoomOut);
         let save_config = ctx.link().callback(|_| Msg::SaveConfig);
         let cancel = ctx.link().callback(|_| Msg::Cancel);
+        let cntr_class = if ctx.props().edit_mode { "edit_cntr_visible" } else { "edit_cntr_hidden" };
+
         html![
-            <div class="edit_cntr_hidden" id="julia_edit_cntr" ref={self.container_ref.clone()}>
+            <div class={cntr_class} id="julia_edit_cntr" ref={self.container_ref.clone()}>
                 <div class="input_cntr">
                     <p class="hint_text">
                         {"Hint: You can select a rectangle in the draw area to import the coordiates into the editor."}
