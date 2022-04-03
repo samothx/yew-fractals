@@ -1,13 +1,13 @@
 use js_sys::Object;
-use seed::prelude::web_sys::{HtmlCanvasElement, ImageData};
-use seed::prelude::JsValue;
-use seed::{canvas, prelude::*, window};
-use seed::{log, spawn_local};
-use wasm_bindgen_futures::JsFuture;
-use web_sys::{PermissionStatus, PermissionState};
+// use wasm_bindgen_futures::JsFuture;
+use web_sys::{ImageData, HtmlCanvasElement, CanvasRenderingContext2d}; //, PermissionStatus, PermissionState};
+use crate::components::root::{Config, FractalType};
 
-use super::{fractal::Points, FractalType, Model, BACKGROUND_COLOR};
-use serde::{Deserialize, Serialize};
+use super::{fractal::Points};
+use wasm_bindgen::{JsValue, JsCast};
+
+
+const BACKGROUND_COLOR: &str = "#000000";
 
 const COLOR_MAX: u32 = 0x00FF_FFFF;
 const COLOR_MIN: u32 = 0x00FF_FFFF;
@@ -19,10 +19,12 @@ const DEFAULT_LIGHTNESS: f32 = 0.5;
 const HUE_OFFSET: f32 = 0.0;
 const HUE_RANGE: f32 = 300.0;
 
+/*
 #[derive(Serialize, Deserialize)]
 struct QueryObject {
     pub name: String,
 }
+*/
 
 pub struct Canvas {
     canvas: HtmlCanvasElement,
@@ -31,17 +33,18 @@ pub struct Canvas {
 }
 
 impl Canvas {
-    pub fn new(model: &Model) -> Self {
+    pub fn new(canvas: HtmlCanvasElement, config: &Config) -> Self {
         Self {
-            canvas: canvas("canvas").expect("Canvas not found"),
-            steps: match model.config.active_config {
-                FractalType::JuliaSet => model.config.julia_set_cfg.max_iterations,
-                FractalType::Mandelbrot => model.config.mandelbrot_cfg.max_iterations,
+            canvas,
+            steps: match config.active_config {
+                FractalType::JuliaSet => config.julia_set_cfg.max_iterations,
+                FractalType::Mandelbrot => config.mandelbrot_cfg.max_iterations,
             },
-            width: model.width,
+            width: config.canvas_width,
         }
     }
 
+    /*
     pub fn copy_to_clipboard(&self) {
         // TODO: understand Promises & Closures in web-sys
         log!("copy_to_clipboard: entered");
@@ -92,30 +95,28 @@ impl Canvas {
         }
 
     }
-
-    pub fn clear_canvas(&self, model: &Model) {
-        log!("Clear Canvas");
-
-        if model.height != self.canvas.height() {
-            self.canvas.set_height(model.height);
+*/
+    pub fn clear_canvas(&mut self, config: &Config) {
+        info!("Clear Canvas");
+        if config.canvas_height != self.canvas.height() {
+            self.canvas.set_height(config.canvas_height);
         }
-        if model.width != self.canvas.width() {
-            self.canvas.set_width(model.width);
+        if config.canvas_width != self.canvas.width() {
+            self.canvas.set_width(config.canvas_width);
         }
+        self.width = config.canvas_width;
 
-        let ctx = seed::canvas_context_2d(&self.canvas);
+        let ctx = self.get_2d_context();
         // ctx.begin_path();
-        ctx.set_fill_style(&JsValue::from_str(model.background_color.as_str()));
-        ctx.fill_rect(0.into(), 0.into(), model.width.into(), model.height.into());
-
-        // ctx.fill();
-        // ctx.stroke();
+        ctx.set_fill_style(&JsValue::from_str(BACKGROUND_COLOR));
+        ctx.fill_rect(0.into(), 0.into(), config.canvas_width.into(), config.canvas_height.into());
     }
 
     pub fn draw_results(&self, points: &Points) {
         let mut x = points.x_start;
         let mut y = points.y_start;
-        let ctx = seed::canvas_context_2d(&self.canvas);
+
+        let ctx = self.get_2d_context();
         ctx.set_fill_style(&JsValue::from_str("FFFFFF"));
 
         let mut last_color = "".to_string();
@@ -145,7 +146,7 @@ impl Canvas {
     pub fn draw_frame(&self, x_start: u32, y_start: u32, x_end: u32, y_end: u32) -> ImageData {
         // log!(format!("draw_frame: ({},{}),({},{})", x_start,y_start, x_end, y_end));
 
-        let ctx = seed::canvas_context_2d(&self.canvas);
+        let ctx = self.get_2d_context();
 
         // TODO: try this again later
         /*
@@ -181,7 +182,7 @@ impl Canvas {
 
     pub fn undraw(&self, image_data: &ImageData) {
         // log!(format!("undraw: ({},{}) width: {} height: {}", x_start,y_start, image_data.width(), image_data.height()));
-        let ctx = seed::canvas_context_2d(&self.canvas);
+        let ctx = self.get_2d_context();
         ctx.put_image_data(image_data, 0.0, 0.0)
             .expect("cannot draw image data");
     }
@@ -203,6 +204,18 @@ impl Canvas {
             None
         }
     }
+
+    #[inline]
+    fn get_2d_context(&self) -> CanvasRenderingContext2d {
+        let tmp1: Object = self.canvas.get_context("2d")
+            .map_or_else(|err| {
+                panic!("failed to retrieve CanvasRenderingContext2d {:?}", err)
+            }, |v| v)
+            .expect("2d context not found in canvas");
+        let tmp2: &JsValue = tmp1.as_ref();
+        tmp2.clone().dyn_into::<CanvasRenderingContext2d>().expect("Failed to cast to CanvasRenderingContext2d")
+    }
+
 
     #[allow(clippy::cast_precision_loss)]
     fn iterations_as_hue_to_rgb(&self, iterations: u32) -> String {

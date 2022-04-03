@@ -1,37 +1,35 @@
 use yew::prelude::*;
 use yew::NodeRef;
 use yew_agent::{Dispatcher, Dispatched, Bridge, Bridged};
-use wasm_bindgen::{JsValue, JsCast};
-use js_sys::Object;
-use web_sys::{ImageData, HtmlCanvasElement, CanvasRenderingContext2d};
+
+use web_sys::{ImageData, HtmlCanvasElement};
+use gloo_timers::future::TimeoutFuture;
+use gloo::render::request_animation_frame;
 
 use super::root::Config;
 use crate::agents::canvas_msg_bus::{CanvasSelectMsgBus, CanvasMsgRequest};
 use crate::agents::command_msg_bus::{CommandMsgBus, CommandRequest as CommandRequest};
-use crate::work::fractal::Fractal;
+use crate::components::root::FractalType;
+use crate::work::{fractal::Fractal, julia_set::JuliaSet, mandelbrot::Mandelbrot};
+use crate::work::stats::Stats;
+use crate::work::canvas::Canvas;
+use wasm_bindgen_futures::spawn_local;
+use std::cell::RefCell;
+use std::rc::Rc;
 
-
-const BACKGROUND_COLOR: &str = "#000000";
-
-const COLOR_MAX: u32 = 0x00FF_FFFF;
-const COLOR_MIN: u32 = 0x00FF_FFFF;
-
-const START_HUE: u32 = 0;
-const DEFAULT_SATURATION: f32 = 1.0;
-const DEFAULT_LIGHTNESS: f32 = 0.5;
-
-const HUE_OFFSET: f32 = 0.0;
-const HUE_RANGE: f32 = 300.0;
-
+const FPS_RESTRICTED_TIMER: bool = false;
 
 pub struct CanvasElement {
     event_bus: Dispatcher<CanvasSelectMsgBus>,
     mouse_drag: Option<MouseDrag>,
     canvas_ref: NodeRef,
-    canvas: Option<HtmlCanvasElement>,
+    canvas: Option<Canvas>,
     _producer: Box<dyn Bridge<CommandMsgBus>>,
     config: Config,
-    fractal: Option<Box<dyn Fractal>>
+    fractal: Option<Box<dyn Fractal>>,
+    stats: Option<Stats>,
+    paused: bool,
+    on_draw: Callback<()>
 }
 
 
@@ -48,6 +46,9 @@ impl Component for CanvasElement {
             _producer: CommandMsgBus::bridge(ctx.link().callback(Msg::Command)),
             config: ctx.props().config.clone(),
             fractal: None,
+            stats: None,
+            paused: true,
+            on_draw: ctx.link().callback(|_| Msg::OnDraw)
         }
     }
 
@@ -56,18 +57,20 @@ impl Component for CanvasElement {
             Msg::MouseMove(event) => {
                 let mut res = false;
                 if self.mouse_drag.is_some() {
-                    let mouse_drag = self.mouse_drag.as_ref().expect("failed to unpack mouse_drag");
-                    if let Some(image_data) = mouse_drag.image_data.as_ref() {
-                        self.undraw(image_data);
+                    if let Some(canvas) = self.canvas.as_ref() {
+                        let mouse_drag = self.mouse_drag.as_ref().expect("failed to unpack mouse_drag");
+                        if let Some(image_data) = mouse_drag.image_data.as_ref() {
+                            canvas.undraw(image_data);
+                        }
+                        let canvas_coords = canvas.viewport_to_canvas_coords(
+                            event.client_x(), event.client_y())
+                            .expect("Failed to retrieve canvas coordinates");
+                        let image_data = canvas.draw_frame(mouse_drag.start.0, mouse_drag.start.1,
+                                                           mouse_drag.curr.0, mouse_drag.curr.1);
+                        let mouse_drag = self.mouse_drag.as_mut().expect("failed to unpack mouse_drag");
+                        mouse_drag.curr = canvas_coords;
+                        mouse_drag.image_data = Some(image_data);
                     }
-                    let canvas_coords = self.viewport_to_canvas_coords(
-                        event.client_x(), event.client_y())
-                        .expect("Failed to retrieve canvas coordinates");
-                    let image_data = self.draw_frame(mouse_drag.start.0, mouse_drag.start.1,
-                                                     mouse_drag.curr.0, mouse_drag.curr.1);
-                    let mouse_drag = self.mouse_drag.as_mut().expect("failed to unpack mouse_drag");
-                    mouse_drag.curr = canvas_coords;
-                    mouse_drag.image_data = Some(image_data);
                     res = true;
                 }
                 res
@@ -75,21 +78,23 @@ impl Component for CanvasElement {
             Msg::MouseUp(event) => {
                 let mut res = false;
                 if self.mouse_drag.is_some() {
-                    let mut canvas_coords: Option<(u32,u32,u32,u32)> = None;
+                    if let Some(canvas) = self.canvas.as_ref() {
+                        let mut canvas_coords: Option<(u32, u32, u32, u32)> = None;
 
-                    if let Some(mouse_drag) = self.mouse_drag.as_ref() {
-                        if let Some(image_data) = mouse_drag.image_data.as_ref() {
-                            self.undraw(image_data);
+                        if let Some(mouse_drag) = self.mouse_drag.as_ref() {
+                            if let Some(image_data) = mouse_drag.image_data.as_ref() {
+                                canvas.undraw(image_data);
+                            }
+                            let canvas_coords_end = canvas.viewport_to_canvas_coords(
+                                event.client_x(), event.client_y())
+                                .expect("Failed to retrieve canvas coordinates");
+                            canvas_coords = Some((mouse_drag.start.0, mouse_drag.start.1,
+                                                  canvas_coords_end.0, canvas_coords_end.1));
                         }
-                        let canvas_coords_end = self.viewport_to_canvas_coords(
-                            event.client_x(), event.client_y())
-                            .expect("Failed to retrieve canvas coordinates");
-                        canvas_coords = Some((mouse_drag.start.0,mouse_drag.start.1,
-                                canvas_coords_end.0, canvas_coords_end.1));
-                    }
-                    self.mouse_drag = None;
-                    if let Some(canvas_coords) = canvas_coords {
-                        self.event_bus.send(CanvasMsgRequest::CanvasSelectMsg(canvas_coords));
+                        self.mouse_drag = None;
+                        if let Some(canvas_coords) = canvas_coords {
+                            self.event_bus.send(CanvasMsgRequest::CanvasSelectMsg(canvas_coords));
+                        }
                     }
                     res = true;
                 }
@@ -97,32 +102,91 @@ impl Component for CanvasElement {
             }
             Msg::MouseDown(event) => {
                 if ctx.props().edit_mode {
-                    let canvas_coords = self.viewport_to_canvas_coords(
-                        event.client_x(), event.client_y())
-                        .expect("Failed to retrieve canvas coordinates");
-                    self.mouse_drag = Some(MouseDrag {
-                        start: canvas_coords,
-                        curr: canvas_coords,
-                        image_data: None,
-                    });
+                    if let Some(canvas) = self.canvas.as_ref() {
+                        let canvas_coords = canvas.viewport_to_canvas_coords(
+                            event.client_x(), event.client_y())
+                            .expect("Failed to retrieve canvas coordinates");
+                        self.mouse_drag = Some(MouseDrag {
+                            start: canvas_coords,
+                            curr: canvas_coords,
+                            image_data: None,
+                        });
+                    }
                 }
                 false
-            },
+            }
             Msg::Command(request) => {
-                info!("Msg Received: Command: {:?}", request);
+                info!("CanvasElement::update: Msg Received: Command: {:?}", request);
                 match request {
                     CommandRequest::Start => {
+                        info!("CanvasElement::update: starting");
+                        self.event_bus.send(CanvasMsgRequest::FractalStarted);
 
+                        if let Some(canvas) = self.canvas.as_mut() {
+                            canvas.clear_canvas(&ctx.props().config);
+                        }
+
+                        if ctx.props().config.view_stats {
+                            self.stats = Some(Stats::new());
+                        }
+
+                        let mut fractal: Box<dyn Fractal> = match ctx.props().config.active_config {
+                            FractalType::Mandelbrot => Box::new(Mandelbrot::new(&ctx.props().config)),
+                            FractalType::JuliaSet => Box::new(JuliaSet::new(&ctx.props().config))
+                        };
+
+                        let points = fractal.calculate(self.stats.as_mut());
+                        if let Some(stats) = self.stats.as_ref() {
+                            self.event_bus.send(CanvasMsgRequest::FractalProgress(stats.format_stats()));
+                        }
+                        if let Some(canvas) = self.canvas.as_ref() {
+                            canvas.draw_results(points);
+                        }
+
+                        self.fractal = Some(fractal);
+                        self.paused = false;
+                        self.send_draw_ev();
+                        false
                     }
                     CommandRequest::Stop => {
-
+                        self.paused = true;
+                        self.event_bus.send(CanvasMsgRequest::FractalPaused);
+                        false
                     }
                     CommandRequest::Clear => {
-                        self.clear();
+                        self.paused = true;
+                        self.event_bus.send(CanvasMsgRequest::FractalPaused);
+                        if let Some(canvas) = self.canvas.as_mut() {
+                            canvas.clear_canvas(&self.config);
+                        }
+                        false
                     }
-
                 }
-                true
+            }
+            Msg::OnDraw => {
+                info!("CanvasElement::update: OnDraw");
+                if !self.paused {
+                    if let Some(fractal) = self.fractal.as_mut() {
+                        let points = fractal.calculate(self.stats.as_mut());
+                        if let Some(stats) = self.stats.as_ref() {
+                            self.event_bus.send(CanvasMsgRequest::FractalProgress(stats.format_stats()));
+                        }
+                        if let Some(canvas) = self.canvas.as_ref() {
+                            canvas.draw_results(points);
+                            // TODO: send stats
+                            if fractal.is_done() {
+                                // TODO: send notifications
+                                self.paused = true;
+                                self.event_bus.send(CanvasMsgRequest::FractalPaused);
+                            } else {
+                                self.send_draw_ev();
+                            }
+                        }
+                    }
+                    true
+                } else {
+                    false
+                }
             }
         }
     }
@@ -147,114 +211,34 @@ impl Component for CanvasElement {
             </div>
         ]
     }
-    fn rendered(&mut self, _ctx: &Context<Self>, first_render: bool) {
+    fn rendered(&mut self, ctx: &Context<Self>, first_render: bool) {
         if first_render {
-            if let Some(canvas) = self.canvas_ref.cast::<HtmlCanvasElement>() {
-                self.canvas = Some(canvas)
+            if let Some(canvas_el) = self.canvas_ref.cast::<HtmlCanvasElement>() {
+                let mut canvas = Canvas::new(canvas_el, &ctx.props().config);
+                canvas.clear_canvas(&ctx.props().config);
+                self.canvas = Some(canvas);
             }
-            self.clear();
         }
     }
 }
 
 impl CanvasElement {
-    pub fn clear(&self) {
-        info!("Clear Canvas");
-        if let Some(canvas) = self.canvas.as_ref() {
-            if self.config.canvas_height != canvas.height() {
-                canvas.set_height(self.config.canvas_height);
-            }
-            if self.config.canvas_width != canvas.width() {
-                canvas.set_width(self.config.canvas_width);
-            }
-
-            let ctx = CanvasElement::get_2d_context(&canvas);
-            ctx.set_fill_style(&JsValue::from_str(BACKGROUND_COLOR));
-            ctx.fill_rect(0.into(), 0.into(), self.config.canvas_width.into(), self.config.canvas_height.into());
-        }
-    }
-
-    pub fn draw_frame(&self, x_start: u32, y_start: u32, x_end: u32, y_end: u32) -> ImageData {
-        // log!(format!("draw_frame: ({},{}),({},{})", x_start,y_start, x_end, y_end));
-
-        if let Some(canvas) = self.canvas.as_ref() {
-            let ctx = CanvasElement::get_2d_context(&canvas);
-            // TODO: try this again later
-            /*
-            let image_width = f64::max(canvas_right - canvas_left, 1.0);
-            let image_height = f64::max(canvas_bottom - canvas_top, 1.0);
-            log!(format!("draw_frame: image coords: ({},{}),({},{})", canvas_left,canvas_top, image_width, image_height));
-            let image_data =
-                ctx.get_image_data(canvas_left, canvas_top, image_width, image_height)
-                    .expect("failed to retrieve image data")
-                    .dyn_into::<ImageData>().expect("Failed to cast to ImageData");
-            */
-            let image_data = ctx
-                .get_image_data(
-                    0.0,
-                    0.0,
-                    canvas.width().into(),
-                    canvas.height().into(),
-                )
-                .expect("failed to retrieve image data");
-
-            ctx.begin_path();
-            ctx.set_stroke_style(&JsValue::from_str("#FFFFFF"));
-            ctx.move_to(x_start.into(), y_start.into());
-            ctx.line_to(x_end.into(), y_start.into());
-            ctx.line_to(x_end.into(), y_end.into());
-            ctx.line_to(x_start.into(), y_end.into());
-            ctx.line_to(x_start.into(), y_start.into());
-            ctx.stroke();
-            image_data
+    fn send_draw_ev(&self) {
+        let callback = self.on_draw.clone();
+        if FPS_RESTRICTED_TIMER {
+            let cell = Rc::new(RefCell::new(None));
+            let future_cell = cell.clone();
+            let requested = request_animation_frame(move |_time| {
+                let _drop_side_effect = future_cell;
+                callback.emit(())
+            });
+            (*cell).replace(Some(requested));
         } else {
-            panic!("canvas not initialized")
+            spawn_local(async move {
+                TimeoutFuture::new(0).await;
+                callback.emit(())
+            });
         }
-    }
-
-    pub fn undraw(&self, image_data: &ImageData) {
-        // log!(format!("undraw: ({},{}) width: {} height: {}", x_start,y_start, image_data.width(), image_data.height()));
-        if let Some(canvas) = self.canvas.as_ref() {
-            let ctx = CanvasElement::get_2d_context(&canvas);
-            ctx.put_image_data(image_data, 0.0, 0.0)
-                .expect("cannot draw image data");
-        } else {
-            error!("canvas not initialized")
-        }
-    }
-
-    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
-    pub fn viewport_to_canvas_coords(&self, x: i32, y: i32) -> Option<(u32, u32)> {
-        if let Some(canvas) = self.canvas.as_ref() {
-            let bounding_rect = canvas.get_bounding_client_rect();
-            let scale_x = f64::from(canvas.width()) / bounding_rect.width();
-            let scale_y = f64::from(canvas.height()) / bounding_rect.height();
-            let canvas_x = (f64::from(x) - bounding_rect.left()) * scale_x;
-            let canvas_y = (f64::from(y) - bounding_rect.top()) * scale_y;
-            if canvas_x >= 0.0
-                && canvas_x < f64::from(canvas.width())
-                && canvas_y >= 0.0
-                && canvas_y < f64::from(canvas.height())
-            {
-                Some((canvas_x.abs() as u32, canvas_y.abs() as u32))
-            } else {
-                None
-            }
-        } else {
-            error!("canvas not initialized");
-            None
-        }
-    }
-
-    #[inline]
-    fn get_2d_context(canvas: &HtmlCanvasElement) -> CanvasRenderingContext2d {
-        let tmp1: Object = canvas.get_context("2d")
-            .map_or_else(|err| {
-                panic!("failed to retrieve CanvasRenderingContext2d {:?}", err)
-            }, |v| v)
-            .expect("2d context not found in canvas");
-        let tmp2: &JsValue = tmp1.as_ref();
-        tmp2.clone().dyn_into::<CanvasRenderingContext2d>().expect("Failed to cast to CanvasRenderingContext2d")
     }
 }
 
@@ -262,7 +246,8 @@ pub enum Msg {
     MouseUp(MouseEvent),
     MouseDown(MouseEvent),
     MouseMove(MouseEvent),
-    Command(CommandRequest)
+    Command(CommandRequest),
+    OnDraw
 }
 
 struct MouseDrag {
