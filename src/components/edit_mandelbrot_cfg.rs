@@ -185,6 +185,7 @@ impl Component for EditMandelbrotCfg {
                             false
                         }
                     }
+                    _ => false
                 }
             }
         }

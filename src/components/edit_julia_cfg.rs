@@ -164,7 +164,7 @@ impl Component for EditJuliaCfg {
             Msg::CanvasMsg(canvas_msg) => {
                 info!("EditJuliaCfg: got msg CanvasMsg");
                 match canvas_msg {
-                    CanvasMsgRequest::CanvasSelectMsg(coords) =>
+                    CanvasMsgRequest::CanvasSelectMsg(coords) => {
                         if ctx.props().edit_mode {
                             // TODO: implement
                             let x_scale = ctx.props().config.x_max.real() - ctx.props().config.x_min.real();
@@ -201,6 +201,8 @@ impl Component for EditJuliaCfg {
                         } else {
                             false
                         }
+                    }
+                    _ => false
                 }
             }
         }

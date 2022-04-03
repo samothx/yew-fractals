@@ -1,26 +1,29 @@
 use yew::prelude::*;
 use crate::components::root::{JuliaSetCfg, MandelbrotCfg, FractalType};
 use crate::agents::command_msg_bus::{CommandMsgBus, CommandRequest};
-use yew_agent::{Dispatcher, Dispatched};
+use yew_agent::{Dispatcher, Dispatched, Bridge, Bridged};
 use web_sys::{HtmlSelectElement, HtmlInputElement};
+use crate::agents::canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus};
 
 pub struct ControlPanel {
     event_bus: Option<Dispatcher<CommandMsgBus>>,
     paused: bool,
     type_sel_ref: NodeRef,
     view_stats_cb_ref: NodeRef,
+    _producer: Box<dyn Bridge<CanvasSelectMsgBus>>,
 }
 
 impl Component for ControlPanel {
     type Message = Msg;
     type Properties = ControlPanelProps;
 
-    fn create(_ctx: &Context<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
         ControlPanel {
             event_bus: None,
             paused: true,
             type_sel_ref: NodeRef::default(),
             view_stats_cb_ref: NodeRef::default(),
+            _producer: CanvasSelectMsgBus::bridge(ctx.link().callback(Msg::CanvasMsg)),
         }
     }
 
@@ -29,18 +32,18 @@ impl Component for ControlPanel {
             Msg::Start => {
                 info!("ControlPanel::Start");
                 if self.paused && !ctx.props().edit_mode {
-                    self.paused = false;
                     self.event_bus.as_mut().expect("Eventbus not initialized")
                         .send(CommandRequest::Start);
                 }
+                true
             }
             Msg::Stop => {
                 info!("ControlPanel::Stop");
                 if !self.paused {
-                    self.paused = true;
                     self.event_bus.as_mut().expect("Eventbus not initialized")
                         .send(CommandRequest::Stop);
                 }
+                true
             }
             Msg::Clear => {
                 info!("ControlPanel::Clear");
@@ -51,12 +54,14 @@ impl Component for ControlPanel {
                 }
                 self.event_bus.as_mut().expect("Eventbus not initialized")
                     .send(CommandRequest::Clear);
+                true
             }
             Msg::Edit => {
                 info!("ControlPanel::Edit");
                 if !ctx.props().edit_mode {
                     ctx.props().on_edit.emit(());
                 }
+                true
             }
             Msg::TypeChanged => {
                 info!("ControlPanel::TypeChanged");
@@ -75,6 +80,7 @@ impl Component for ControlPanel {
                     self.event_bus.as_mut().expect("Eventbus not initialized").send(CommandRequest::Clear);
                     ctx.props().on_type_changed.emit(fractal_type)
                 }
+                true
             },
             Msg::ViewStatsChanged => {
                 info!("ControlPanel::ViewStatsChanged");
@@ -82,9 +88,26 @@ impl Component for ControlPanel {
                     .expect("Type select not found")
                     .checked();
                 ctx.props().on_view_stats_changed.emit(checked);
+                true
+            }
+            Msg::CanvasMsg(canvas_msg) => {
+                // TODO: implement
+                match canvas_msg {
+                    CanvasMsgRequest::FractalStarted => {
+                        self.paused = false;
+                        true
+                    }
+                    CanvasMsgRequest::FractalPaused => {
+                        self.paused = true;
+                        true
+                    }
+                    CanvasMsgRequest::FractalProgress(_msg) => {
+                        true
+                    }
+                    _ => false
+                }
             }
         }
-        true
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
@@ -163,6 +186,7 @@ pub enum Msg {
     Edit,
     TypeChanged,
     ViewStatsChanged,
+    CanvasMsg(CanvasMsgRequest),
 }
 
 #[derive(Properties, PartialEq, Clone)]

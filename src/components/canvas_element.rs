@@ -1,7 +1,10 @@
 use yew::prelude::*;
 use yew::NodeRef;
 use yew_agent::{Dispatcher, Dispatched, Bridge, Bridged};
+
 use web_sys::{ImageData, HtmlCanvasElement};
+use gloo_timers::future::TimeoutFuture;
+// use gloo::render::request_animation_frame;
 
 use super::root::Config;
 use crate::agents::canvas_msg_bus::{CanvasSelectMsgBus, CanvasMsgRequest};
@@ -10,6 +13,7 @@ use crate::components::root::FractalType;
 use crate::work::{fractal::Fractal, julia_set::JuliaSet, mandelbrot::Mandelbrot};
 use crate::work::stats::Stats;
 use crate::work::canvas::Canvas;
+use wasm_bindgen_futures::spawn_local;
 
 
 pub struct CanvasElement {
@@ -109,9 +113,16 @@ impl Component for CanvasElement {
                 false
             }
             Msg::Command(request) => {
-                info!("Msg Received: Command: {:?}", request);
+                info!("CanvasElement::update: Msg Received: Command: {:?}", request);
                 match request {
                     CommandRequest::Start => {
+                        info!("CanvasElement::update: starting");
+                        self.event_bus.send(CanvasMsgRequest::FractalStarted);
+
+                        if let Some(canvas) = self.canvas.as_mut() {
+                            canvas.clear_canvas(&ctx.props().config);
+                        }
+
                         if ctx.props().config.view_stats {
                             self.stats = Some(Stats::new());
                         }
@@ -122,20 +133,26 @@ impl Component for CanvasElement {
                         };
 
                         let points = fractal.calculate(self.stats.as_mut());
+                        if let Some(stats) = self.stats.as_ref() {
+                            self.event_bus.send(CanvasMsgRequest::FractalProgress(stats.format_stats()));
+                        }
                         if let Some(canvas) = self.canvas.as_ref() {
                             canvas.draw_results(points);
                         }
+
                         self.fractal = Some(fractal);
                         self.paused = false;
-                        self.on_draw.emit(());
+                        self.send_draw_ev();
                         false
                     }
                     CommandRequest::Stop => {
                         self.paused = true;
+                        self.event_bus.send(CanvasMsgRequest::FractalPaused);
                         false
                     }
                     CommandRequest::Clear => {
                         self.paused = true;
+                        self.event_bus.send(CanvasMsgRequest::FractalPaused);
                         if let Some(canvas) = self.canvas.as_mut() {
                             canvas.clear_canvas(&self.config);
                         }
@@ -144,22 +161,29 @@ impl Component for CanvasElement {
                 }
             }
             Msg::OnDraw => {
+                info!("CanvasElement::update: OnDraw");
                 if !self.paused {
                     if let Some(fractal) = self.fractal.as_mut() {
                         let points = fractal.calculate(self.stats.as_mut());
+                        if let Some(stats) = self.stats.as_ref() {
+                            self.event_bus.send(CanvasMsgRequest::FractalProgress(stats.format_stats()));
+                        }
                         if let Some(canvas) = self.canvas.as_ref() {
                             canvas.draw_results(points);
                             // TODO: send stats
                             if fractal.is_done() {
                                 // TODO: send notifications
                                 self.paused = true;
+                                self.event_bus.send(CanvasMsgRequest::FractalPaused);
                             } else {
-                                self.on_draw.emit(());
+                                self.send_draw_ev();
                             }
                         }
                     }
+                    true
+                } else {
+                    false
                 }
-                false
             }
         }
     }
@@ -195,6 +219,22 @@ impl Component for CanvasElement {
     }
 }
 
+impl CanvasElement {
+    fn send_draw_ev(&self) {
+        /* does not work for some reason
+        let callback = self.on_draw.clone();
+       let req = request_animation_frame(move |_time| {
+           callback.emit(())
+       });
+       */
+
+        let callback = self.on_draw.clone();
+        spawn_local(async move {
+            TimeoutFuture::new(1).await;
+            callback.emit(())
+        });
+    }
+}
 
 pub enum Msg {
     MouseUp(MouseEvent),
