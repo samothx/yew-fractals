@@ -182,8 +182,8 @@ impl Component for ControlPanel {
         ]
     }
 
-    fn rendered(&mut self, ctx: &Context<Self>, first_render: bool) {
-        if self.event_bus.is_none() {
+    fn rendered(&mut self, _ctx: &Context<Self>, first_render: bool) {
+        if first_render && self.event_bus.is_none() {
             self.event_bus = Some(CommandMsgBus::dispatcher());
         }
     }

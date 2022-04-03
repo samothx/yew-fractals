@@ -9,10 +9,10 @@ use wasm_bindgen::{JsValue, JsCast};
 
 const BACKGROUND_COLOR: &str = "#000000";
 
-const COLOR_MAX: u32 = 0x00FF_FFFF;
-const COLOR_MIN: u32 = 0x00FF_FFFF;
+// const COLOR_MAX: u32 = 0x00FF_FFFF;
+// const COLOR_MIN: u32 = 0x00FF_FFFF;
 
-const START_HUE: u32 = 0;
+// const START_HUE: u32 = 0;
 const DEFAULT_SATURATION: f32 = 1.0;
 const DEFAULT_LIGHTNESS: f32 = 0.5;
 
@@ -254,6 +254,7 @@ impl Canvas {
     }
 
     #[allow(
+        dead_code,
         clippy::many_single_char_names,
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss

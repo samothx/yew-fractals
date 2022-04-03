@@ -21,7 +21,7 @@ pub const MANDELBROT_DEFAULT_C_MIN: (f64, f64) = (-2.00, -1.12);
 pub const MANDELBROT_DEFAULT_ITERATIONS: u32 = 400;
 
 const STORAGE_KEY: &str = "yew_fractals_v2.1";
-const DEBUG_NO_STORAGE: bool = true;
+const DEBUG_NO_STORAGE: bool = false;
 
 pub const DEFAULT_WIDTH: u32 = 1024;
 

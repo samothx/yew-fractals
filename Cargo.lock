@@ -68,6 +68,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "fractal-explorer"
+version = "0.1.0"
+dependencies = [
+ "gloo 0.6.1",
+ "gloo-timers",
+ "js-sys",
+ "log",
+ "png_encode_mini",
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-logger",
+ "web-sys",
+ "yew",
+ "yew-agent",
+]
+
+[[package]]
 name = "futures-channel"
 version = "0.3.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -635,25 +654,6 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "yew",
-]
-
-[[package]]
-name = "yew-fractals"
-version = "0.1.0"
-dependencies = [
- "gloo 0.6.1",
- "gloo-timers",
- "js-sys",
- "log",
- "png_encode_mini",
- "serde",
- "serde_json",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "wasm-logger",
- "web-sys",
- "yew",
- "yew-agent",
 ]
 
 [[package]]
