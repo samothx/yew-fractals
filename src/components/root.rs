@@ -101,11 +101,15 @@ impl Component for Root {
                     <div class="fractal_container">
                         <EditJuliaCfg edit_mode={self.edit_mode && self.config.active_config == FractalType::JuliaSet}
                                         config={self.config.julia_set_cfg.clone()}
+                                        canvas_width={self.config.canvas_width}
+                                        canvas_height={self.config.canvas_height}
                                         cb_saved={ctx.link().callback(|config: JuliaSetCfg| Msg::JuliaSetCfgChanged(config))}
                                         cb_canceled={ctx.link().callback(|_| Msg::EditCfgCanceled)}
                         />
                         <EditMandelbrotCfg edit_mode={self.edit_mode && self.config.active_config == FractalType::Mandelbrot}
                                         config={self.config.mandelbrot_cfg.clone()}
+                                        canvas_width={self.config.canvas_width}
+                                        canvas_height={self.config.canvas_height}
                                         cb_saved={ctx.link().callback(|config: MandelbrotCfg| Msg::MandelbrotCfgChanged(config))}
                                         cb_canceled={ctx.link().callback(|_| Msg::EditCfgCanceled)}
                         />

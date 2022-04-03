@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 use yew::prelude::*;
 
-use web_sys::HtmlInputElement;
+use web_sys::{HtmlInputElement, HtmlTextAreaElement};
 
 pub fn get_f64_from_ref(node_ref: &NodeRef, name: &str) -> Result<f64, String> {
     match node_ref.cast::<HtmlInputElement>() {
@@ -36,7 +36,7 @@ pub fn get_u32_from_ref(node_ref: &NodeRef, name: &str) -> Result<u32, String> {
     }
 }
 
-pub fn set_value_on_ref(node_ref: &NodeRef, name: &str, value: &str) -> Result<(), String> {
+pub fn set_value_on_input_ref(node_ref: &NodeRef, name: &str, value: &str) -> Result<(), String> {
     match node_ref.cast::<HtmlInputElement>() {
         Some(element) => {
             element.set_value(value);
@@ -44,6 +44,18 @@ pub fn set_value_on_ref(node_ref: &NodeRef, name: &str, value: &str) -> Result<(
         },
         None => {
             Err(format!("Could not cast NodeRef to HtmlInputElement for value {}", name))
+        }
+    }
+}
+
+pub fn set_value_on_txt_area_ref(node_ref: &NodeRef, name: &str, value: &str) -> Result<(), String> {
+    match node_ref.cast::<HtmlTextAreaElement>() {
+        Some(element) => {
+            element.set_value(value);
+            Ok(())
+        },
+        None => {
+            Err(format!("Could not cast NodeRef to HtmlTextAreaElement for value {}", name))
         }
     }
 }

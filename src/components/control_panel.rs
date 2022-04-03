@@ -4,12 +4,14 @@ use crate::agents::command_msg_bus::{CommandMsgBus, CommandRequest};
 use yew_agent::{Dispatcher, Dispatched, Bridge, Bridged};
 use web_sys::{HtmlSelectElement, HtmlInputElement};
 use crate::agents::canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus};
+use crate::work::util::set_value_on_txt_area_ref;
 
 pub struct ControlPanel {
     event_bus: Option<Dispatcher<CommandMsgBus>>,
     paused: bool,
     type_sel_ref: NodeRef,
     view_stats_cb_ref: NodeRef,
+    view_stats_txt_ref: NodeRef,
     _producer: Box<dyn Bridge<CanvasSelectMsgBus>>,
 }
 
@@ -23,6 +25,7 @@ impl Component for ControlPanel {
             paused: true,
             type_sel_ref: NodeRef::default(),
             view_stats_cb_ref: NodeRef::default(),
+            view_stats_txt_ref: NodeRef::default(),
             _producer: CanvasSelectMsgBus::bridge(ctx.link().callback(Msg::CanvasMsg)),
         }
     }
@@ -101,8 +104,14 @@ impl Component for ControlPanel {
                         self.paused = true;
                         true
                     }
-                    CanvasMsgRequest::FractalProgress(_msg) => {
-                        true
+                    CanvasMsgRequest::FractalProgress(msg) => {
+                        set_value_on_txt_area_ref(&self.view_stats_txt_ref,
+                                               "stats_txt",
+                                               msg.as_str())
+                            .map_or_else(|err| {
+                                error!("{}",err.as_str());
+                            }, |v| v);
+                        false
                     }
                     _ => false
                 }
@@ -164,7 +173,8 @@ impl Component for ControlPanel {
                     />
                 </div>
                 <div class={ if ctx.props().view_stats {"stats_cntr_visible"} else {"stats_cntr_hidden"}}>
-                    <textarea class="stats_text" readonly=true rows="6" placeholder="No Stats yet">
+                    <textarea class="stats_text" readonly=true rows="6" placeholder="No Stats yet"
+                        ref={self.view_stats_txt_ref.clone()} >
                         {model.stats_text.as_str()}
                     </textarea>
                 </div>

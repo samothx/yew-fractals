@@ -4,7 +4,7 @@ use yew_agent::{Dispatcher, Dispatched, Bridge, Bridged};
 
 use web_sys::{ImageData, HtmlCanvasElement};
 use gloo_timers::future::TimeoutFuture;
-// use gloo::render::request_animation_frame;
+use gloo::render::request_animation_frame;
 
 use super::root::Config;
 use crate::agents::canvas_msg_bus::{CanvasSelectMsgBus, CanvasMsgRequest};
@@ -14,7 +14,10 @@ use crate::work::{fractal::Fractal, julia_set::JuliaSet, mandelbrot::Mandelbrot}
 use crate::work::stats::Stats;
 use crate::work::canvas::Canvas;
 use wasm_bindgen_futures::spawn_local;
+use std::cell::RefCell;
+use std::rc::Rc;
 
+const FPS_RESTRICTED_TIMER: bool = false;
 
 pub struct CanvasElement {
     event_bus: Dispatcher<CanvasSelectMsgBus>,
@@ -221,18 +224,21 @@ impl Component for CanvasElement {
 
 impl CanvasElement {
     fn send_draw_ev(&self) {
-        /* does not work for some reason
         let callback = self.on_draw.clone();
-       let req = request_animation_frame(move |_time| {
-           callback.emit(())
-       });
-       */
-
-        let callback = self.on_draw.clone();
-        spawn_local(async move {
-            TimeoutFuture::new(1).await;
-            callback.emit(())
-        });
+        if FPS_RESTRICTED_TIMER {
+            let cell = Rc::new(RefCell::new(None));
+            let future_cell = cell.clone();
+            let requested = request_animation_frame(move |_time| {
+                let _drop_side_effect = future_cell;
+                callback.emit(())
+            });
+            (*cell).replace(Some(requested));
+        } else {
+            spawn_local(async move {
+                TimeoutFuture::new(0).await;
+                callback.emit(())
+            });
+        }
     }
 }
 

@@ -1,7 +1,7 @@
 // use yew::{Component, Context, Html, Callback};
 use yew::prelude::*;
 use web_sys::Element;
-use crate::work::util::{get_u32_from_ref, get_f64_from_ref, set_value_on_ref};
+use crate::work::util::{get_u32_from_ref, get_f64_from_ref, set_value_on_input_ref};
 use crate::work::complex::Complex;
 use crate::components::root::{MANDELBROT_DEFAULT_C_MIN, MANDELBROT_DEFAULT_C_MAX, MANDELBROT_DEFAULT_ITERATIONS, MandelbrotCfg};
 use crate::agents::canvas_msg_bus::{CanvasSelectMsgBus, CanvasMsgRequest};
@@ -14,7 +14,7 @@ pub enum Msg {
     ResetArea,
     SaveConfig,
     Cancel,
-    CanvasMsg(CanvasMsgRequest)
+    CanvasMsg(CanvasMsgRequest),
 }
 
 pub struct EditMandelbrotCfg {
@@ -104,27 +104,27 @@ impl Component for EditMandelbrotCfg {
             }
             Msg::ResetArea => {
                 info!("EditMandelbrotCfg: got msg ResetArea");
-                set_value_on_ref(&self.c_max_real_ref,
-                                 "x_max_real",
-                                 MANDELBROT_DEFAULT_C_MAX.0.to_string().as_str())
+                set_value_on_input_ref(&self.c_max_real_ref,
+                                       "x_max_real",
+                                       MANDELBROT_DEFAULT_C_MAX.0.to_string().as_str())
                     .map_or_else(|err| {
                         error!("{}",err.as_str());
                     }, |v| v);
-                set_value_on_ref(&self.c_max_imag_ref,
-                                 "x_max_imag",
-                                 MANDELBROT_DEFAULT_C_MAX.1.to_string().as_str())
+                set_value_on_input_ref(&self.c_max_imag_ref,
+                                       "x_max_imag",
+                                       MANDELBROT_DEFAULT_C_MAX.1.to_string().as_str())
                     .map_or_else(|err| {
                         error!("{}",err.as_str());
                     }, |v| v);
-                set_value_on_ref(&self.c_min_real_ref,
-                                 "x_min_real",
-                                 MANDELBROT_DEFAULT_C_MIN.0.to_string().as_str())
+                set_value_on_input_ref(&self.c_min_real_ref,
+                                       "x_min_real",
+                                       MANDELBROT_DEFAULT_C_MIN.0.to_string().as_str())
                     .map_or_else(|err| {
                         error!("{}",err.as_str());
                     }, |v| v);
-                set_value_on_ref(&self.c_min_imag_ref,
-                                 "x_min_imag",
-                                 MANDELBROT_DEFAULT_C_MIN.1.to_string().as_str())
+                set_value_on_input_ref(&self.c_min_imag_ref,
+                                       "x_min_imag",
+                                       MANDELBROT_DEFAULT_C_MIN.1.to_string().as_str())
                     .map_or_else(|err| {
                         error!("{}",err.as_str());
                     }, |v| v);
@@ -136,9 +136,9 @@ impl Component for EditMandelbrotCfg {
             }
             Msg::ResetParams => {
                 info!("EditMandelbrotCfg: got msg ResetParams");
-                set_value_on_ref(&self.iter_ref,
-                                 "max_iterations",
-                                 MANDELBROT_DEFAULT_ITERATIONS.to_string().as_str())
+                set_value_on_input_ref(&self.iter_ref,
+                                       "max_iterations",
+                                       MANDELBROT_DEFAULT_ITERATIONS.to_string().as_str())
                     .map_or_else(|err| {
                         error!("{}",err.as_str());
                     }, |v| v);
@@ -149,34 +149,47 @@ impl Component for EditMandelbrotCfg {
                     CanvasMsgRequest::CanvasSelectMsg(coords) => {
                         info!("EditMandelbrotCfg: got msg CanvasSelect");
                         if ctx.props().edit_mode {
-                            // TODO: implement
-                            let x_scale = ctx.props().config.c_max.real() - ctx.props().config.c_min.real();
-                            let y_scale = ctx.props().config.c_max.imag() - ctx.props().config.c_min.imag();
-                            let c_min = Complex::new(ctx.props().config.c_min.real() + x_scale * f64::from(coords.0),
-                                                     ctx.props().config.c_min.imag() + y_scale * f64::from(coords.1));
-                            let c_max = Complex::new(ctx.props().config.c_max.real() + x_scale * f64::from(coords.2),
-                                                     ctx.props().config.c_max.imag() + y_scale * f64::from(coords.3));
-                            set_value_on_ref(&self.c_max_real_ref,
-                                             "c_max_real",
-                                             c_max.real().to_string().as_str())
+                            let x_scale = (ctx.props().config.c_max.real() - ctx.props().config.c_min.real()) /
+                                f64::from(ctx.props().canvas_width);
+                            let y_scale = (ctx.props().config.c_max.imag() - ctx.props().config.c_min.imag()) /
+                                f64::from(ctx.props().canvas_height);
+                            // info!("EditMandelbrotCfg: CanvasSelectMsg size: {}/{} ",ctx.props().canvas_width,
+                            //    ctx.props().canvas_height);
+                            // info!("EditMandelbrotCfg: CanvasSelectMsg coords: {:?} ", coords);
+                            // info!("EditMandelbrotCfg: CanvasSelectMsg scales: {}/{} ", x_scale, y_scale);
+
+                            let c_min = Complex::new(ctx.props().config.c_min.real() +
+                                                         x_scale * f64::from(coords.0),
+                                                     ctx.props().config.c_min.imag() +
+                                                         y_scale * f64::from(coords.1));
+                            let c_max = Complex::new(ctx.props().config.c_min.real() +
+                                                         x_scale * f64::from(coords.2),
+                                                     ctx.props().config.c_min.imag() +
+                                                         y_scale * f64::from(coords.3));
+
+                            // info!("EditMandelbrotCfg: CanvasSelectMsg new values: c_min: {}, c_max: {} ", c_min, c_max);
+
+                            set_value_on_input_ref(&self.c_max_real_ref,
+                                                   "c_max_real",
+                                                   c_max.real().to_string().as_str())
                                 .map_or_else(|err| {
                                     error!("{}",err.as_str());
                                 }, |v| v);
-                            set_value_on_ref(&self.c_max_imag_ref,
-                                             "x_max_imag",
-                                             c_max.imag().to_string().as_str())
+                            set_value_on_input_ref(&self.c_max_imag_ref,
+                                                   "x_max_imag",
+                                                   c_max.imag().to_string().as_str())
                                 .map_or_else(|err| {
                                     error!("{}",err.as_str());
                                 }, |v| v);
-                            set_value_on_ref(&self.c_min_real_ref,
-                                             "c_min_real",
-                                             c_min.real().to_string().as_str())
+                            set_value_on_input_ref(&self.c_min_real_ref,
+                                                   "c_min_real",
+                                                   c_min.real().to_string().as_str())
                                 .map_or_else(|err| {
                                     error!("{}",err.as_str());
                                 }, |v| v);
-                            set_value_on_ref(&self.c_min_imag_ref,
-                                             "c_min_imag",
-                                             c_min.imag().to_string().as_str())
+                            set_value_on_input_ref(&self.c_min_imag_ref,
+                                                   "c_min_imag",
+                                                   c_min.imag().to_string().as_str())
                                 .map_or_else(|err| {
                                     error!("{}",err.as_str());
                                 }, |v| v);
@@ -285,6 +298,8 @@ impl Component for EditMandelbrotCfg {
 pub struct EditMandelbrotCfgProps {
     pub edit_mode: bool,
     pub config: MandelbrotCfg,
+    pub canvas_width: u32,
+    pub canvas_height: u32,
     pub cb_saved: Callback<MandelbrotCfg>,
     pub cb_canceled: Callback<()>,
 }
