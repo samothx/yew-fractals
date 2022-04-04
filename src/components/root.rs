@@ -20,8 +20,8 @@ pub const MANDELBROT_DEFAULT_C_MAX: (f64, f64) = (0.47, 1.12);
 pub const MANDELBROT_DEFAULT_C_MIN: (f64, f64) = (-2.00, -1.12);
 pub const MANDELBROT_DEFAULT_ITERATIONS: u32 = 400;
 
-const STORAGE_KEY: &str = "yew_fractals_v2.1";
-const DEBUG_NO_STORAGE: bool = false;
+const STORAGE_KEY: &str = "yew_fractals_v2.2";
+const DEBUG_NO_STORAGE: bool = true;
 
 pub const DEFAULT_WIDTH: u32 = 1024;
 
@@ -30,6 +30,7 @@ pub const DEFAULT_WIDTH: u32 = 1024;
 pub struct Root {
     config: Config,
     edit_mode: bool,
+    canvas_height: u32
 }
 
 impl Component for Root {
@@ -37,9 +38,12 @@ impl Component for Root {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
+        let config = Config::default();
+        let canvas_height= config.get_canvas_height(DEFAULT_WIDTH);
         Self {
-            config: Config::default(),
+            config,
             edit_mode: false,
+            canvas_height
         }
     }
 
@@ -48,12 +52,14 @@ impl Component for Root {
             Msg::JuliaSetCfgChanged(config) => {
                 self.edit_mode = false;
                 self.config.julia_set_cfg = config;
+                self.canvas_height = self.config.get_canvas_height(DEFAULT_WIDTH);
                 self.config.store();
                 true
             },
             Msg::MandelbrotCfgChanged(config) => {
                 self.edit_mode = false;
                 self.config.mandelbrot_cfg = config;
+                self.canvas_height = self.config.get_canvas_height(DEFAULT_WIDTH);
                 self.config.store();
                 true
             },
@@ -63,6 +69,7 @@ impl Component for Root {
             },
             Msg::TypeChanged(fractal_type) => {
                 self.config.active_config = fractal_type;
+                self.canvas_height = self.config.get_canvas_height(DEFAULT_WIDTH);
                 self.config.store();
                 true
             },
@@ -101,21 +108,23 @@ impl Component for Root {
                     <div class="fractal_container">
                         <EditJuliaCfg edit_mode={self.edit_mode && self.config.active_config == FractalType::JuliaSet}
                                         config={self.config.julia_set_cfg.clone()}
-                                        canvas_width={self.config.canvas_width}
-                                        canvas_height={self.config.canvas_height}
+                                        canvas_width={DEFAULT_WIDTH}
+                                        canvas_height={self.canvas_height}
                                         cb_saved={ctx.link().callback(|config: JuliaSetCfg| Msg::JuliaSetCfgChanged(config))}
                                         cb_canceled={ctx.link().callback(|_| Msg::EditCfgCanceled)}
                         />
                         <EditMandelbrotCfg edit_mode={self.edit_mode && self.config.active_config == FractalType::Mandelbrot}
                                         config={self.config.mandelbrot_cfg.clone()}
-                                        canvas_width={self.config.canvas_width}
-                                        canvas_height={self.config.canvas_height}
+                                        canvas_width={DEFAULT_WIDTH}
+                                        canvas_height={self.canvas_height}
                                         cb_saved={ctx.link().callback(|config: MandelbrotCfg| Msg::MandelbrotCfgChanged(config))}
                                         cb_canceled={ctx.link().callback(|_| Msg::EditCfgCanceled)}
                         />
                         <CanvasElement
                             config={self.config.clone()}
                             edit_mode={self.edit_mode}
+                            canvas_width={DEFAULT_WIDTH}
+                            canvas_height={self.canvas_height}
                         />
                     </div>
                 </div>
@@ -139,8 +148,6 @@ pub struct Config {
     pub active_config: FractalType,
     pub julia_set_cfg: JuliaSetCfg,
     pub mandelbrot_cfg: MandelbrotCfg,
-    pub canvas_width: u32,
-    pub canvas_height: u32,
 }
 
 impl Default for Config {
@@ -171,17 +178,26 @@ impl Config {
     }
 
     fn std_cfg() -> Self {
-        let def_config = MandelbrotCfg::default();
-        let height = (f64::from(DEFAULT_WIDTH) *
-            (def_config.c_max.imag() - def_config.c_min.imag()) /
-            (def_config.c_max.real() - def_config.c_min.real())) as u32;
         Self {
             view_stats: false,
             active_config: FractalType::Mandelbrot,
             julia_set_cfg: JuliaSetCfg::default(),
-            mandelbrot_cfg: def_config,
-            canvas_width: DEFAULT_WIDTH,
-            canvas_height: height,
+            mandelbrot_cfg: MandelbrotCfg::default(),
+        }
+    }
+
+    pub fn get_canvas_height(&self, canvas_width: u32) -> u32 {
+        match self.active_config {
+            FractalType::Mandelbrot => {
+                (f64::from(canvas_width) *
+                    (self.mandelbrot_cfg.c_max.imag() - self.mandelbrot_cfg.c_min.imag()) /
+                    (self.mandelbrot_cfg.c_max.real() - self.mandelbrot_cfg.c_min.real())) as u32
+            },
+            FractalType::JuliaSet => {
+                (f64::from(canvas_width) *
+                    (self.julia_set_cfg.x_max.imag() - self.julia_set_cfg.x_min.imag()) /
+                    (self.julia_set_cfg.x_max.real() - self.julia_set_cfg.x_min.real())) as u32
+            }
         }
     }
 }

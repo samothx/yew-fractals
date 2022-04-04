@@ -29,7 +29,7 @@ pub struct CanvasElement {
     fractal: Option<Box<dyn Fractal>>,
     stats: Option<Stats>,
     paused: bool,
-    on_draw: Callback<()>
+    on_draw: Callback<()>,
 }
 
 
@@ -48,7 +48,7 @@ impl Component for CanvasElement {
             fractal: None,
             stats: None,
             paused: true,
-            on_draw: ctx.link().callback(|_| Msg::OnDraw)
+            on_draw: ctx.link().callback(|_| Msg::OnDraw),
         }
     }
 
@@ -123,7 +123,7 @@ impl Component for CanvasElement {
                         self.event_bus.send(CanvasMsgRequest::FractalStarted);
 
                         if let Some(canvas) = self.canvas.as_mut() {
-                            canvas.clear_canvas(&ctx.props().config);
+                            canvas.clear_canvas(ctx.props().canvas_width, ctx.props().canvas_height);
                         }
 
                         if ctx.props().config.view_stats {
@@ -131,8 +131,13 @@ impl Component for CanvasElement {
                         }
 
                         let mut fractal: Box<dyn Fractal> = match ctx.props().config.active_config {
-                            FractalType::Mandelbrot => Box::new(Mandelbrot::new(&ctx.props().config)),
-                            FractalType::JuliaSet => Box::new(JuliaSet::new(&ctx.props().config))
+                            FractalType::Mandelbrot =>
+                                Box::new(Mandelbrot::new(&ctx.props().config,
+                                                         ctx.props().canvas_width, ctx.props().canvas_height)),
+                            FractalType::JuliaSet =>
+                                Box::new(JuliaSet::new(&ctx.props().config,
+                                                       ctx.props().canvas_width,
+                                                       ctx.props().canvas_height))
                         };
 
                         let points = fractal.calculate(self.stats.as_mut());
@@ -157,7 +162,7 @@ impl Component for CanvasElement {
                         self.paused = true;
                         self.event_bus.send(CanvasMsgRequest::FractalPaused);
                         if let Some(canvas) = self.canvas.as_mut() {
-                            canvas.clear_canvas(&self.config);
+                            canvas.clear_canvas(ctx.props().canvas_width, ctx.props().canvas_height);
                         }
                         false
                     }
@@ -199,8 +204,8 @@ impl Component for CanvasElement {
         html![
             <div class="canvas_cntr">
                 <canvas class="canvas" id="canvas"
-                    width={ctx.props().config.canvas_width.to_string()}
-                    height={ctx.props().config.canvas_height.to_string()}
+                    width={ctx.props().canvas_width.to_string()}
+                    height={ctx.props().canvas_height.to_string()}
                     onmousedown={on_mouse_down}
                     onmouseup={on_mouse_up}
                     onmousemove={on_mouse_move}
@@ -214,8 +219,8 @@ impl Component for CanvasElement {
     fn rendered(&mut self, ctx: &Context<Self>, first_render: bool) {
         if first_render {
             if let Some(canvas_el) = self.canvas_ref.cast::<HtmlCanvasElement>() {
-                let mut canvas = Canvas::new(canvas_el, &ctx.props().config);
-                canvas.clear_canvas(&ctx.props().config);
+                let mut canvas = Canvas::new(canvas_el, &ctx.props().config, ctx.props().canvas_width);
+                canvas.clear_canvas(ctx.props().canvas_width, ctx.props().canvas_height);
                 self.canvas = Some(canvas);
             }
         }
@@ -247,7 +252,7 @@ pub enum Msg {
     MouseDown(MouseEvent),
     MouseMove(MouseEvent),
     Command(CommandRequest),
-    OnDraw
+    OnDraw,
 }
 
 struct MouseDrag {
@@ -261,4 +266,6 @@ struct MouseDrag {
 pub struct CanvasProps {
     pub config: Config,
     pub edit_mode: bool,
+    pub canvas_width: u32,
+    pub canvas_height: u32,
 }

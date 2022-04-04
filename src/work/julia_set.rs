@@ -24,7 +24,7 @@ pub struct JuliaSet {
 }
 
 impl JuliaSet {
-    pub fn new(config: &Config) -> Self {
+    pub fn new(config: &Config, canvas_width: u32, canvas_height: u32 ) -> Self {
         info!(
             "creating fractal with: x_max: {}, x_min: {}, c: {}",
             config.julia_set_cfg.x_max,
@@ -34,10 +34,10 @@ impl JuliaSet {
 
         let scale_real = (config.julia_set_cfg.x_max.real()
             - config.julia_set_cfg.x_min.real())
-            / f64::from(config.canvas_width);
+            / f64::from(canvas_width);
         let scale_imag = (config.julia_set_cfg.x_max.imag()
             - config.julia_set_cfg.x_min.imag())
-            / f64::from(config.canvas_height);
+            / f64::from(canvas_height);
         let max = find_escape_radius(config.julia_set_cfg.c.norm());
 
         Self {
@@ -47,9 +47,9 @@ impl JuliaSet {
             c: config.julia_set_cfg.c,
             max: max * max,
             x_curr: 0,
-            width: config.canvas_width,
+            width: canvas_width,
             y_curr: 0,
-            height: config.canvas_height,
+            height: canvas_height,
             iterations: config.julia_set_cfg.max_iterations,
             res: Points::default(),
             done: false,

@@ -8,6 +8,8 @@ use crate::agents::canvas_msg_bus::{CanvasSelectMsgBus, CanvasMsgRequest};
 use yew_agent::{Bridge, Bridged};
 
 
+// TODO: Maintain correct aspect ratio
+
 pub enum Msg {
     ResetParams,
     ZoomOut,

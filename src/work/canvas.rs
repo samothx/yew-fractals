@@ -33,14 +33,14 @@ pub struct Canvas {
 }
 
 impl Canvas {
-    pub fn new(canvas: HtmlCanvasElement, config: &Config) -> Self {
+    pub fn new(canvas: HtmlCanvasElement, config: &Config, width: u32) -> Self {
         Self {
             canvas,
             steps: match config.active_config {
                 FractalType::JuliaSet => config.julia_set_cfg.max_iterations,
                 FractalType::Mandelbrot => config.mandelbrot_cfg.max_iterations,
             },
-            width: config.canvas_width,
+            width,
         }
     }
 
@@ -96,20 +96,20 @@ impl Canvas {
 
     }
 */
-    pub fn clear_canvas(&mut self, config: &Config) {
+    pub fn clear_canvas(&mut self, width: u32, height: u32) {
         info!("Clear Canvas");
-        if config.canvas_height != self.canvas.height() {
-            self.canvas.set_height(config.canvas_height);
+        if height != self.canvas.height() {
+            self.canvas.set_height(height);
         }
-        if config.canvas_width != self.canvas.width() {
-            self.canvas.set_width(config.canvas_width);
+        if width != self.canvas.width() {
+            self.canvas.set_width(width);
         }
-        self.width = config.canvas_width;
+        self.width = width;
 
         let ctx = self.get_2d_context();
         // ctx.begin_path();
         ctx.set_fill_style(&JsValue::from_str(BACKGROUND_COLOR));
-        ctx.fill_rect(0.into(), 0.into(), config.canvas_width.into(), config.canvas_height.into());
+        ctx.fill_rect(0.into(), 0.into(), width.into(), height.into());
     }
 
     pub fn draw_results(&self, points: &Points) {
