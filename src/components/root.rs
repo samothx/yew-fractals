@@ -3,7 +3,7 @@ use web_sys::window;
 
 use serde::{Serialize, Deserialize};
 
-use crate::work::complex::Complex;
+use crate::work::complex::ComplexFP;
 use super::{disclaimer::Disclaimer, control_panel::ControlPanel, canvas_element::CanvasElement,
             edit_julia_cfg::EditJuliaCfg,
             edit_mandelbrot_cfg::EditMandelbrotCfg,
@@ -205,18 +205,18 @@ impl Config {
 #[derive(Serialize, Deserialize, PartialEq, Clone)]
 pub struct JuliaSetCfg {
     pub max_iterations: u32,
-    pub x_max: Complex,
-    pub x_min: Complex,
-    pub c: Complex,
+    pub x_max: ComplexFP,
+    pub x_min: ComplexFP,
+    pub c: ComplexFP,
 }
 
 impl Default for JuliaSetCfg {
     fn default() -> Self {
         Self {
             max_iterations: JULIA_DEFAULT_ITERATIONS,
-            x_max: Complex::new(JULIA_DEFAULT_X_MAX.0, JULIA_DEFAULT_X_MAX.1),
-            x_min: Complex::new(JULIA_DEFAULT_X_MIN.0, JULIA_DEFAULT_X_MIN.1),
-            c: Complex::new(JULIA_DEFAULT_C.0, JULIA_DEFAULT_C.1),
+            x_max: ComplexFP::new(JULIA_DEFAULT_X_MAX.0, JULIA_DEFAULT_X_MAX.1),
+            x_min: ComplexFP::new(JULIA_DEFAULT_X_MIN.0, JULIA_DEFAULT_X_MIN.1),
+            c: ComplexFP::new(JULIA_DEFAULT_C.0, JULIA_DEFAULT_C.1),
         }
     }
 }
@@ -224,16 +224,16 @@ impl Default for JuliaSetCfg {
 #[derive(Serialize, Deserialize, PartialEq, Clone)]
 pub struct MandelbrotCfg {
     pub max_iterations: u32,
-    pub c_max: Complex,
-    pub c_min: Complex,
+    pub c_max: ComplexFP,
+    pub c_min: ComplexFP,
 }
 
 impl Default for MandelbrotCfg {
     fn default() -> Self {
         Self {
             max_iterations: MANDELBROT_DEFAULT_ITERATIONS,
-            c_max: Complex::new(MANDELBROT_DEFAULT_C_MAX.0, MANDELBROT_DEFAULT_C_MAX.1),
-            c_min: Complex::new(MANDELBROT_DEFAULT_C_MIN.0, MANDELBROT_DEFAULT_C_MIN.1),
+            c_max: ComplexFP::new(MANDELBROT_DEFAULT_C_MAX.0, MANDELBROT_DEFAULT_C_MAX.1),
+            c_min: ComplexFP::new(MANDELBROT_DEFAULT_C_MIN.0, MANDELBROT_DEFAULT_C_MIN.1),
         }
     }
 }

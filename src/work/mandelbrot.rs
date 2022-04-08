@@ -2,7 +2,7 @@ use crate::components::root::Config;
 use super::{util::find_escape_radius, fractal::MAX_DURATION};
 
 use super::{
-    complex::Complex,
+    complex::ComplexFP,
     fractal::{Fractal, Points},
     stats::Stats
 };
@@ -10,7 +10,7 @@ use super::{
 pub struct Mandelbrot {
     scale_real: f64,
     scale_imag: f64,
-    offset: Complex,
+    offset: ComplexFP,
     x_curr: u32,
     y_curr: u32,
     width: u32,
@@ -48,9 +48,9 @@ impl Mandelbrot {
         }
     }
 
-    fn iterate(&self, c: &Complex) -> u32 {
+    fn iterate(&self, c: &ComplexFP) -> u32 {
         let max = find_escape_radius(c.norm()).powi(2);
-        let mut x = Complex::new(0.0, 0.0);
+        let mut x = ComplexFP::new(0.0, 0.0);
         // log!(format!("iterate: start: {}", curr));
         let mut last: Option<u32> = None;
         for idx in 1..=self.iterations {
@@ -87,7 +87,7 @@ impl Fractal for Mandelbrot {
         let mut iterations = 0usize;
 
         for count in 0..self.res.values.len() {
-            let calc = Complex::new(
+            let calc = ComplexFP::new(
                 f64::from(x).mul_add(self.scale_real,self.offset.real()),
                 f64::from(y).mul_add(self.scale_imag,self.offset.imag()),
             );

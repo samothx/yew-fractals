@@ -484,7 +484,7 @@ dependencies = [
 [[package]]
 name = "simple_big_int"
 version = "0.1.0"
-source = "git+https://github.com/samothx/big_int#b55b6401ba5a33eda13583e4e1ce160d76559571"
+source = "git+https://github.com/samothx/big_int#ec26e85c01758fdddc7b9cec9d878ef5f11d71cb"
 dependencies = [
  "lazy_static",
 ]
