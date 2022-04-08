@@ -78,6 +78,7 @@ dependencies = [
  "png_encode_mini",
  "serde",
  "serde_json",
+ "simple_big_int",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasm-logger",
@@ -478,6 +479,14 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "simple_big_int"
+version = "0.1.0"
+source = "git+https://github.com/samothx/big_int#b55b6401ba5a33eda13583e4e1ce160d76559571"
+dependencies = [
+ "lazy_static",
 ]
 
 [[package]]
