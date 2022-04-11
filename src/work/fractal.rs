@@ -1,5 +1,11 @@
 use super::stats::Stats;
 
+mod julia_set;
+pub use julia_set::JuliaSet;
+mod mandelbrot;
+pub use mandelbrot::Mandelbrot;
+
+
 const MAX_POINTS: usize = 5000;
 pub const MAX_DURATION: f64 = 200.0;
 

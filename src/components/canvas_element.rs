@@ -1,21 +1,19 @@
-use yew::prelude::*;
-use yew::NodeRef;
-use yew_agent::{Dispatcher, Dispatched, Bridge, Bridged};
-
-use web_sys::{ImageData, HtmlCanvasElement};
-use gloo_timers::future::TimeoutFuture;
-use gloo::render::request_animation_frame;
-
-use super::root::Config;
-use crate::agents::canvas_msg_bus::{CanvasSelectMsgBus, CanvasMsgRequest};
-use crate::agents::command_msg_bus::{CommandMsgBus, CommandRequest as CommandRequest};
-use crate::components::root::FractalType;
-use crate::work::{fractal::Fractal, julia_set::JuliaSet, mandelbrot::Mandelbrot};
-use crate::work::stats::Stats;
-use crate::work::canvas::Canvas;
-use wasm_bindgen_futures::spawn_local;
 use std::cell::RefCell;
 use std::rc::Rc;
+
+use gloo::render::request_animation_frame;
+use gloo_timers::future::TimeoutFuture;
+use wasm_bindgen_futures::spawn_local;
+use web_sys::{HtmlCanvasElement, ImageData};
+use yew::NodeRef;
+use yew::prelude::*;
+use yew_agent::{Bridge, Bridged, Dispatched, Dispatcher};
+
+use crate::{agents::{canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus},
+                     command_msg_bus::{CommandMsgBus, CommandRequest as CommandRequest}},
+            components::root::{FractalType, Config},
+            work::{fractal::{Fractal, JuliaSet, Mandelbrot}, canvas::Canvas, stats::Stats}};
+
 
 const FPS_RESTRICTED_TIMER: bool = false;
 
@@ -197,9 +195,9 @@ impl Component for CanvasElement {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let on_mouse_up = ctx.link().callback(|ev| Msg::MouseUp(ev));
-        let on_mouse_down = ctx.link().callback(|ev| Msg::MouseDown(ev));
-        let on_mouse_move = ctx.link().callback(|ev| Msg::MouseMove(ev));
+        let on_mouse_up = ctx.link().callback(Msg::MouseUp);
+        let on_mouse_down = ctx.link().callback(Msg::MouseDown);
+        let on_mouse_move = ctx.link().callback(Msg::MouseMove);
 
         html![
             <div class="canvas_cntr">

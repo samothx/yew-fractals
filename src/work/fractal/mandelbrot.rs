@@ -1,7 +1,7 @@
 use crate::components::root::Config;
-use super::{util::find_escape_radius, fractal::MAX_DURATION};
+use crate::work::{util::find_escape_radius, fractal::MAX_DURATION};
 
-use super::{
+use crate::work::{
     complex::Complex,
     fractal::{Fractal, Points},
     stats::Stats

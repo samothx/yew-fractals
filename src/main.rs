@@ -1,5 +1,3 @@
-use yew;
-
 #[macro_use]
 extern crate log;
 

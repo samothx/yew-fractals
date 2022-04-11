@@ -1,6 +1,6 @@
 // use wasm_bindgen::prelude::web_sys;
 use crate::components::root::Config;
-use super::{
+use crate::work::{
     util::find_escape_radius,
     complex::Complex,
     fractal::{Fractal, Points, MAX_DURATION},
@@ -69,7 +69,7 @@ impl JuliaSet {
         }
 
         // log!(format!("iterate: end:  {} norm: {} last: {:?}", curr, curr.square_length(), last));
-        last.map_or(self.iterations + 1, |last| last)    
+        last.map_or(self.iterations + 1, |last| last)
     }
 }
 

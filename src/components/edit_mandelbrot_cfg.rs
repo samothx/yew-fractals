@@ -9,7 +9,7 @@ use yew_agent::{Bridge, Bridged};
 
 
 // TODO: Maintain correct aspect ratio
-
+#[allow(clippy::enum_variant_names)]
 pub enum Msg {
     ResetParams,
     ZoomOut,
