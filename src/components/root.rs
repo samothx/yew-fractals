@@ -100,9 +100,9 @@ impl Component for Root {
                     <ControlPanel
                         config={ctrl_panel_cfg}
                         view_stats={self.config.view_stats}
-                        on_type_changed={ctx.link().callback(|fractal_type: FractalType| Msg::TypeChanged(fractal_type))}
+                        on_type_changed={ctx.link().callback(Msg::TypeChanged)}
                         on_edit={ctx.link().callback(|_| Msg::EditConfig)}
-                        on_view_stats_changed={ctx.link().callback(|value: bool| Msg::ViewStatsChanged(value))}
+                        on_view_stats_changed={ctx.link().callback(Msg::ViewStatsChanged)}
                         edit_mode={self.edit_mode}
                     />
                     <div class="fractal_container">
@@ -110,14 +110,14 @@ impl Component for Root {
                                         config={self.config.julia_set_cfg.clone()}
                                         canvas_width={DEFAULT_WIDTH}
                                         canvas_height={self.canvas_height}
-                                        cb_saved={ctx.link().callback(|config: JuliaSetCfg| Msg::JuliaSetCfgChanged(config))}
+                                        cb_saved={ctx.link().callback(Msg::JuliaSetCfgChanged)}
                                         cb_canceled={ctx.link().callback(|_| Msg::EditCfgCanceled)}
                         />
                         <EditMandelbrotCfg edit_mode={self.edit_mode && self.config.active_config == FractalType::Mandelbrot}
                                         config={self.config.mandelbrot_cfg.clone()}
                                         canvas_width={DEFAULT_WIDTH}
                                         canvas_height={self.canvas_height}
-                                        cb_saved={ctx.link().callback(|config: MandelbrotCfg| Msg::MandelbrotCfgChanged(config))}
+                                        cb_saved={ctx.link().callback(Msg::MandelbrotCfgChanged)}
                                         cb_canceled={ctx.link().callback(|_| Msg::EditCfgCanceled)}
                         />
                         <CanvasElement

@@ -73,7 +73,7 @@ impl Component for ControlPanel {
                     .value().as_str() {
                     "type_mandelbrot" => Some(FractalType::Mandelbrot),
                     "type_julia_set" => Some(FractalType::JuliaSet),
-                    val @ _ => {
+                    val => {
                         error!("invalid fractal type '{}'", val);
                         None
                     }
@@ -189,6 +189,7 @@ impl Component for ControlPanel {
     }
 }
 
+#[allow(clippy::enum_variant_names)]
 pub enum Msg {
     Start,
     Stop,
