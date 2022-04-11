@@ -2,7 +2,7 @@
 use yew::prelude::*;
 use web_sys::Element;
 use crate::work::util::{get_u32_from_ref, get_f64_from_ref, set_value_on_input_ref};
-use crate::work::complex::ComplexFP;
+use crate::work::complex::Complex;
 use crate::components::root::{MANDELBROT_DEFAULT_C_MIN, MANDELBROT_DEFAULT_C_MAX, MANDELBROT_DEFAULT_ITERATIONS, MandelbrotCfg};
 use crate::agents::canvas_msg_bus::{CanvasSelectMsgBus, CanvasMsgRequest};
 use yew_agent::{Bridge, Bridged};
@@ -99,8 +99,8 @@ impl Component for EditMandelbrotCfg {
 
                 ctx.props().cb_saved.emit(MandelbrotCfg {
                     max_iterations,
-                    c_max: ComplexFP::new(c_max_real, c_max_imag),
-                    c_min: ComplexFP::new(c_min_real, c_min_imag),
+                    c_max: Complex::new(c_max_real, c_max_imag),
+                    c_min: Complex::new(c_min_real, c_min_imag),
                 });
                 false
             }
@@ -160,13 +160,13 @@ impl Component for EditMandelbrotCfg {
                             // info!("EditMandelbrotCfg: CanvasSelectMsg coords: {:?} ", coords);
                             // info!("EditMandelbrotCfg: CanvasSelectMsg scales: {}/{} ", x_scale, y_scale);
 
-                            let c_min = ComplexFP::new(ctx.props().config.c_min.real() +
+                            let c_min = Complex::new(ctx.props().config.c_min.real() +
                                                          x_scale * f64::from(coords.0),
-                                                       ctx.props().config.c_min.imag() +
+                                                     ctx.props().config.c_min.imag() +
                                                          y_scale * f64::from(coords.1));
-                            let c_max = ComplexFP::new(ctx.props().config.c_min.real() +
+                            let c_max = Complex::new(ctx.props().config.c_min.real() +
                                                          x_scale * f64::from(coords.2),
-                                                       ctx.props().config.c_min.imag() +
+                                                     ctx.props().config.c_min.imag() +
                                                          y_scale * f64::from(coords.3));
 
                             // info!("EditMandelbrotCfg: CanvasSelectMsg new values: c_min: {}, c_max: {} ", c_min, c_max);

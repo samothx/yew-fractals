@@ -3,7 +3,7 @@ use yew::prelude::*;
 use super::root::{JuliaSetCfg};
 use web_sys::Element;
 use crate::work::util::{get_u32_from_ref, get_f64_from_ref, set_value_on_input_ref};
-use crate::work::complex::ComplexFP;
+use crate::work::complex::Complex;
 use crate::components::root::{JULIA_DEFAULT_X_MAX, JULIA_DEFAULT_X_MIN, JULIA_DEFAULT_ITERATIONS};
 use crate::agents::canvas_msg_bus::{CanvasSelectMsgBus, CanvasMsgRequest};
 use yew_agent::{Bridge, Bridged};
@@ -115,9 +115,9 @@ impl Component for EditJuliaCfg {
 
                 ctx.props().cb_saved.emit(JuliaSetCfg {
                     max_iterations,
-                    c: ComplexFP::new(c_real, c_imag),
-                    x_max: ComplexFP::new(x_max_real, x_max_imag),
-                    x_min: ComplexFP::new(x_min_real, x_min_imag),
+                    c: Complex::new(c_real, c_imag),
+                    x_max: Complex::new(x_max_real, x_max_imag),
+                    x_min: Complex::new(x_min_real, x_min_imag),
                 });
                 false
             }

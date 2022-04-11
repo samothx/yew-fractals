@@ -2,7 +2,7 @@
 use crate::components::root::Config;
 use super::{
     util::find_escape_radius,
-    complex::ComplexFP,
+    complex::Complex,
     fractal::{Fractal, Points, MAX_DURATION},
     stats::Stats
 };
@@ -11,8 +11,8 @@ use super::{
 pub struct JuliaSet {
     scale_real: f64,
     scale_imag: f64,
-    offset: ComplexFP,
-    c: ComplexFP,
+    offset: Complex,
+    c: Complex,
     max: f64,
     x_curr: u32,
     width: u32,
@@ -56,7 +56,7 @@ impl JuliaSet {
         }
     }
 
-    fn iterate(&self, x: &ComplexFP) -> u32 {
+    fn iterate(&self, x: &Complex) -> u32 {
         let mut curr = *x;
         // log!(format!("iterate: start: {}", curr));
         let mut last: Option<u32> = None;
@@ -94,7 +94,7 @@ impl Fractal for JuliaSet {
         let mut iterations = 0usize;
 
         for count in 0..self.res.values.len() {
-            let calc = ComplexFP::new(
+            let calc = Complex::new(
                 f64::from(x).mul_add(self.scale_real, self.offset.real()),
                 f64::from(y).mul_add(self.scale_imag, self.offset.imag()),
             );

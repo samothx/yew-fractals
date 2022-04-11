@@ -144,17 +144,17 @@ pub fn find_escape_radius(c_norm: f64) -> f64 {
 
 #[cfg(test)]
 mod test {
-    use crate::work::complex::ComplexFP;
+    use crate::work::complex::Complex;
     use super::find_escape_radius;
 
     #[test]
     fn test_find_escape_radius() {
-        let c_norm = ComplexFP::new(0.3, -0.5).norm();
+        let c_norm = Complex::new(0.3, -0.5).norm();
         let radius = find_escape_radius(c_norm);
         assert!(radius * radius - radius >= c_norm);
         assert!(radius * radius - radius - c_norm <= 0.01);
 
-        let c_norm = ComplexFP::new(1.0, -1.0).norm();
+        let c_norm = Complex::new(1.0, -1.0).norm();
         let radius = find_escape_radius(c_norm);
         assert!(radius * radius - radius >= c_norm);
         assert!(radius * radius - radius - c_norm <= 0.01);
