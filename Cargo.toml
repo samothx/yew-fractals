@@ -11,7 +11,6 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-yew = "0.19"
 yew-agent = "0.1"
 serde = "1.0.136"
 serde_json = "1"
@@ -21,6 +20,9 @@ wasm-bindgen-futures = "0.4"
 log = "0.4.6"
 wasm-logger = "0.2.0"
 js-sys = "0.3"
+
+[dependencies.yew]
+version = "0.19"
 
 [dependencies.gloo]
 version = "0.6.1"
@@ -34,5 +36,5 @@ features=[ "futures"]
 version = "0.3.56"
 features=[ "Performance", "DomRect", "Element", "ImageData", "Navigator", "Permissions", "Clipboard",
     "PermissionStatus", "PermissionState", "Storage", "HtmlCanvasElement", "CanvasRenderingContext2d",
-    "HtmlSelectElement"]
+    "HtmlSelectElement", "Touch", "TouchEvent", "TouchList"]
 

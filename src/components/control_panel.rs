@@ -1,10 +1,25 @@
 use yew::prelude::*;
-use crate::components::root::{JuliaSetCfg, MandelbrotCfg, FractalType};
-use crate::agents::command_msg_bus::{CommandMsgBus, CommandRequest};
+
 use yew_agent::{Dispatcher, Dispatched, Bridge, Bridged};
-use web_sys::{HtmlSelectElement, HtmlInputElement};
-use crate::agents::canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus};
-use crate::work::util::set_value_on_txt_area_ref;
+
+use js_sys::Object;
+use web_sys::{HtmlSelectElement, HtmlInputElement, PermissionState, PermissionStatus};
+
+use wasm_bindgen_futures::{spawn_local, JsFuture};
+use wasm_bindgen::closure::Closure;
+use wasm_bindgen::JsValue;
+use serde::{Serialize, Deserialize};
+
+use gloo::utils::window;
+
+use crate::{agents::{canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus},
+                     command_msg_bus::{CommandMsgBus, CommandRequest}},
+            work::util::set_value_on_txt_area_ref,
+            components::root::{JuliaSetCfg, MandelbrotCfg, FractalType},
+
+};
+
+
 
 pub struct ControlPanel {
     event_bus: Option<Dispatcher<CommandMsgBus>>,
@@ -14,6 +29,62 @@ pub struct ControlPanel {
     view_stats_txt_ref: NodeRef,
     _producer: Box<dyn Bridge<CanvasSelectMsgBus>>,
 }
+
+impl ControlPanel {
+    fn copy_to_clipboard(&self) {
+        info!("copy_to_clipboard entered");
+        let query_obj = Object::from(
+            JsValue::from_serde(&QueryObject {
+                name: String::from("clipboard-write"),
+            })
+                .expect("unable to create JSValue"),
+        );
+
+        info!("copy_to_clipboard: got query_object: {:?}", query_obj);
+        match window()
+            .navigator()
+            .permissions()
+            .expect("no permissipons found in navigator")
+            .query(&query_obj)
+        {
+            Ok(result) => {
+                info!("copy_to_clipboard: query permission returned ok");
+                spawn_local(async move {
+                    let resolve = Closure::wrap(Box::new(|js_value: JsValue|  {
+                        info!("copy_to_clipboard: got Result {:?}", js_value);
+                        let status = PermissionStatus::from(js_value);
+                        info!("copy_to_clipboard: got PermissionStatus {:?}", status.state());
+                        if status.state() == PermissionState::Granted {
+                            let _clipboard = window().navigator().clipboard().expect("clipboard not found");
+
+                            // TODO: do something
+                        }
+                    }) as Box<dyn FnMut(JsValue)>);
+
+                    let reject = Closure::wrap(Box::new(|js_value: JsValue| {
+                        info!(
+                            "copy_to_clipboard: get permission: error {}",
+                            js_value.as_string().unwrap_or("None".to_string())
+                        );
+                    }) as Box<dyn FnMut(JsValue)>);
+
+                    let promise = result.then2(&resolve, &reject);
+                    let res = JsFuture::from(promise).await;
+                    info!("copy_to_clipboard: spawned future returned {:?}", res);
+                });
+                info!("copy_to_clipboard: spawned future locally");
+            },
+            Err(err) => {
+                info!(
+                    "copy_to_clipboard: error from query permissions, msg: {}",
+                    err.as_string().unwrap_or("None".to_string())
+                );
+            }
+        }
+
+    }
+}
+
 
 impl Component for ControlPanel {
     type Message = Msg;
@@ -65,6 +136,11 @@ impl Component for ControlPanel {
                     ctx.props().on_edit.emit(());
                 }
                 true
+            }
+            Msg::Copy => {
+                info!("ControlPanel::Copy");
+                self.copy_to_clipboard();
+                false
             }
             Msg::TypeChanged => {
                 info!("ControlPanel::TypeChanged");
@@ -130,6 +206,7 @@ impl Component for ControlPanel {
         let on_stop = ctx.link().callback(|_| Msg::Stop);
         let on_edit = ctx.link().callback(|_| Msg::Edit);
         let on_clear = ctx.link().callback(|_| Msg::Clear);
+        let on_copy = ctx.link().callback(|_| Msg::Copy);
         let on_type_changed = ctx.link().callback(|_| Msg::TypeChanged);
         let on_view_stats_changed = ctx.link().callback(|_| Msg::ViewStatsChanged);
 
@@ -151,6 +228,10 @@ impl Component for ControlPanel {
                 <button class="menu_button" id="edit" onclick={on_edit}
                         disabled={ !self.paused || ctx.props().edit_mode }>
                     {"Edit"}
+                </button>
+                <button class="menu_button" id="copy" onclick={on_copy}
+                        disabled={ !self.paused || ctx.props().edit_mode }>
+                    {"Copy"}
                 </button>
                 <label class="type_select_label" for="type_select">
                     {"Select Type"}
@@ -195,6 +276,7 @@ pub enum Msg {
     Stop,
     Clear,
     Edit,
+    Copy,
     TypeChanged,
     ViewStatsChanged,
     CanvasMsg(CanvasMsgRequest),
@@ -214,4 +296,9 @@ pub struct ControlPanelProps {
 pub enum PanelConfig {
     ConfigJuliaSet(JuliaSetCfg),
     ConfigMandelbrot(MandelbrotCfg),
+}
+
+#[derive(Serialize, Deserialize)]
+struct QueryObject {
+    pub name: String,
 }
