@@ -113,6 +113,73 @@ impl Component for CanvasElement {
                 }
                 false
             }
+            Msg::TouchStart(ev) => {
+                info!("CanvasElement::update: Msg Received: TouchStart: {:?}", ev);
+                if ctx.props().edit_mode {
+                    if let Some(canvas) = self.canvas.as_ref() {
+                        let touch = ev.touches().item(0).expect("No touch found in event");
+                        let canvas_coords = canvas.viewport_to_canvas_coords(
+                            touch.client_x(), touch.client_y())
+                            .expect("Failed to retrieve canvas coordinates");
+                        info!("TouchStart: Client x/y({},{}), Canvas x/y {:?}",
+                            touch.client_x(),touch.client_y(), canvas_coords);
+                        self.mouse_drag = Some(MouseDrag {
+                            start: canvas_coords,
+                            curr: canvas_coords,
+                            image_data: None,
+                        });
+                    }
+                }
+
+                false
+            },
+            Msg::TouchEnd(ev) => {
+                info!("CanvasElement::update: Msg Received: TouchEnd: {:?}",  ev);
+                let mut res = false;
+                if let Some(mouse_drag) = self.mouse_drag.as_ref() {
+                    if let Some(canvas) = self.canvas.as_ref() {
+                        // let mut canvas_coords: Option<(u32, u32, u32, u32)> = None;
+
+                        if let Some(image_data) = mouse_drag.image_data.as_ref() {
+                            canvas.undraw(image_data);
+                        }
+
+                        let canvas_coords = Some((mouse_drag.start.0, mouse_drag.start.1,
+                                              mouse_drag.curr.0, mouse_drag.curr.1));
+
+                        self.mouse_drag = None;
+                        if let Some(canvas_coords) = canvas_coords {
+                            self.event_bus.send(CanvasMsgRequest::CanvasSelectMsg(canvas_coords));
+                        }
+                    }
+                    res = true;
+                }
+                res
+            }
+            Msg::TouchMove(ev) => {
+                info!("CanvasElement::update: Msg Received: TouchMove: {:?}", ev);
+                let mut res = false;
+                if self.mouse_drag.is_some() {
+                    if let Some(canvas) = self.canvas.as_ref() {
+                        let mouse_drag = self.mouse_drag.as_ref().expect("failed to unpack mouse_drag");
+                        if let Some(image_data) = mouse_drag.image_data.as_ref() {
+                            canvas.undraw(image_data);
+                        }
+                        let touch = ev.touches().item(0).expect("No touch found in event");
+                        let canvas_coords = canvas.viewport_to_canvas_coords(
+                            touch.client_x(), touch.client_y())
+                            .expect("Failed to retrieve canvas coordinates");
+
+                        let image_data = canvas.draw_frame(mouse_drag.start.0, mouse_drag.start.1,
+                                                           mouse_drag.curr.0, mouse_drag.curr.1);
+                        let mouse_drag = self.mouse_drag.as_mut().expect("failed to unpack mouse_drag");
+                        mouse_drag.curr = canvas_coords;
+                        mouse_drag.image_data = Some(image_data);
+                    }
+                    res = true;
+                }
+                res
+            }
             Msg::Command(request) => {
                 info!("CanvasElement::update: Msg Received: Command: {:?}", request);
                 match request {
@@ -167,7 +234,7 @@ impl Component for CanvasElement {
                 }
             }
             Msg::OnDraw => {
-                info!("CanvasElement::update: OnDraw");
+                // info!("CanvasElement::update: OnDraw");
                 if !self.paused {
                     if let Some(fractal) = self.fractal.as_mut() {
                         let points = fractal.calculate(self.stats.as_mut());
@@ -198,6 +265,10 @@ impl Component for CanvasElement {
         let on_mouse_up = ctx.link().callback(Msg::MouseUp);
         let on_mouse_down = ctx.link().callback(Msg::MouseDown);
         let on_mouse_move = ctx.link().callback(Msg::MouseMove);
+        // TODO: sort these out
+        let on_touch_start = ctx.link().callback(Msg::TouchStart);
+        let on_touch_end = ctx.link().callback(Msg::TouchEnd);
+        let on_touch_move = ctx.link().callback(Msg::TouchMove);
 
         html![
             <div class="canvas_cntr">
@@ -207,6 +278,9 @@ impl Component for CanvasElement {
                     onmousedown={on_mouse_down}
                     onmouseup={on_mouse_up}
                     onmousemove={on_mouse_move}
+                    ontouchstart={on_touch_start}
+                    ontouchend={on_touch_end}
+                    ontouchmove={on_touch_move}
                     ref={self.canvas_ref.clone()}
                 >
                     {"Your browser does not support the canvas tag."}
@@ -245,10 +319,14 @@ impl CanvasElement {
     }
 }
 
+#[derive(Debug)]
 pub enum Msg {
     MouseUp(MouseEvent),
     MouseDown(MouseEvent),
     MouseMove(MouseEvent),
+    TouchStart(TouchEvent),
+    TouchEnd(TouchEvent),
+    TouchMove(TouchEvent),
     Command(CommandRequest),
     OnDraw,
 }
