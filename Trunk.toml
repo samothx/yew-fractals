@@ -1,0 +1,15 @@
+[build]
+# The index HTML file to drive the bundling process.
+target = "index.html"
+# Build in release mode.
+release = false
+# The output dir for all final assets.
+dist = "dist"
+# The public URL from which assets are to be served.
+public_url = "/"
+
+[[proxy]]
+# This WebSocket proxy example has a backend and ws field. This example will listen for
+# WebSocket connections at `/api/ws` and proxy them to `ws://localhost:9000/api/ws`.
+# backend = "ws://localhost:9000/api/ws"
+ws = false
