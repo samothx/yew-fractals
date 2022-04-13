@@ -1,0 +1,112 @@
+[env]
+PORT = "8080"
+RUSTFLAGS="--cfg=web_sys_unstable_apis"
+
+
+[config]
+skip_core_tasks = true
+
+# ---- BASIC ----
+
+[tasks.watch]
+description = "Watch files and recompile the project on change"
+run_task = [
+    { name = "build" },
+]
+watch = true
+
+[tasks.serve]
+description = "Start server"
+install_crate = { crate_name = "microserver", binary = "microserver", test_arg = "-h" }
+command = "microserver"
+args = ["--port", "${PORT}", "./dist"]
+
+[tasks.verify]
+description = "Format, lint with Clippy and run tests"
+dependencies = ["fmt", "clippy", "test_h_firefox"]
+
+[tasks.clean]
+description = "Cleanup dist dir"
+command = "rm"
+args = ["-rf", "dist"]
+
+# ---- BUILD ----
+
+[tasks.build]
+description = "Build & copy to dist"
+dependencies = ["build_wasm_release", "copy"]
+
+[tasks.build_release]
+description = "Build with wasm-pack in release mode & copy to dist"
+dependencies = ["build_wasm", "copy"]
+
+[tasks.build_wasm]
+description = "Build with wasm-pack"
+install_crate = { crate_name = "wasm-pack", binary = "wasm-pack", test_arg = "-V" }
+command = "wasm-pack"
+args = ["build", "--target", "web", "--out-name", "package", "--dev"]
+dependencies = ["mkdirs", "sass", "copy"]
+
+[tasks.build_wasm_release]
+description = "Build with wasm-pack in release mode"
+install_crate = { crate_name = "wasm-pack", binary = "wasm-pack", test_arg = "-V" }
+command = "wasm-pack"
+args = ["build", "--target", "web", "--out-name", "package"]
+
+[tasks.copy]
+description = "Copy stuff to dist dir"
+dependencies = ["mkdirs", "copy_index", "copy_pkg", "sass"]
+
+[tasks.copy_pkg]
+description = "Copy pkg dir to dist dir"
+command = "cp"
+args = ["-r", "pkg", "dist/"]
+
+[tasks.copy_index]
+description = "Copy index.html to dist dir"
+command = "cp"
+args = ["index.html", "dist/index.html"]
+
+[tasks.mkdirs]
+description = "Create neccessary directories"
+command = "mkdir"
+args = ["-p", "dist/css", "dist/pkg"]
+
+[tasks.sass]
+description = "Compile scss to css"
+command = "sassc"
+args = ["assets/css/styles.scss", "dist/css/styles.css"]
+
+# ---- LINT ----
+
+[tasks.clippy]
+description = "Lint with Clippy"
+install_crate = { rustup_component_name = "clippy", binary = "cargo-clippy", test_arg = "--help" }
+command = "cargo"
+args = ["clippy", "--all-features", "--", "--deny", "warnings", "--deny", "clippy::pedantic", "--deny", "clippy::nursery"]
+
+
+[tasks.fmt]
+description = "Format with rustfmt"
+install_crate = { rustup_component_name = "rustfmt", binary = "rustfmt", test_arg = "-V" }
+command = "cargo"
+args = ["fmt"]
+
+
+# ---- TEST ----
+
+[tasks.test_h]
+description = "Run headless tests. Ex: 'cargo make test_h firefox'. Test envs: [chrome, firefox, safari]"
+extend = "test"
+args = ["test", "--headless", "--${@}"]
+
+[tasks.test_h_firefox]
+description = "Run headless tests with Firefox."
+extend = "test"
+args = ["test", "--headless", "--firefox"]
+
+[tasks.test]
+description = "Run tests. Ex: 'cargo make test firefox'. Test envs: [chrome, firefox, safari]"
+install_crate = { crate_name = "wasm-pack", binary = "wasm-pack", test_arg = "-V" }
+command = "wasm-pack"
+args = ["test", "--${@}"]

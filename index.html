@@ -1,13 +1,21 @@
 <!DOCTYPE html>
+<html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="scss" data-trunk="yes" href="assets/css/styles.scss">
+    <link rel="modulepreload" href="/pkg/package.js" as="script" type="text/javascript">
+    <link rel="preload" href="/pkg/package_bg.wasm" as="fetch" type="application/wasm" crossorigin="anonymous">
+    <link rel="stylesheet" href="css/styles.css">
+    <title>Fractal Explorer</title>
 </head>
 
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Fractal Explorer</title>
-  </head>
+<body>
+<section id="app"></section>
+<script type="module">
+    import init from '/pkg/package.js';
+    init('/pkg/package_bg.wasm');
+</script>
+</body>
+
 </html>
