@@ -29,6 +29,41 @@ dependencies = ["fmt", "clippy", "test_h_firefox"]
 description = "Cleanup dist dir"
 command = "rm"
 args = ["-rf", "dist"]
+dependencies = ["clean_archive"]
+
+[tasks.clean_archive]
+description = "remove archive"
+command = "rm"
+args = ["-f", "yew-fractals.tgz"]
+
+# ---- PROVISION ----
+
+[tasks.provision]
+description = "Build & prepare for provisioning"
+dependencies = ["build", "mod_index","tar"]
+
+[tasks.provision_release]
+description = "Build Release & prepare for provisioning"
+dependencies = ["build_release", "mod_index","tar"]
+
+[tasks.tar]
+description = "pack dist"
+command = "tar"
+args = ["-czf","yew-fractals.tgz","-C","dist","." ]
+
+[tasks.mod_index]
+description = "Modify index file"
+dependencies = ["mod_index_pkg", "mod_index_css"]
+
+[tasks.mod_index_pkg]
+description = "Modify index file pkg refs"
+command = "sed"
+args = ["-i","s/pkg\\//yew-fractals\\/pkg\\//", "dist/index.html" ]
+
+[tasks.mod_index_css]
+description = "Modify index file css refs"
+command = "sed"
+args = ["-i","s/css\\//yew-fractals\\/css\\//", "dist/index.html" ]
 
 # ---- BUILD ----
 
