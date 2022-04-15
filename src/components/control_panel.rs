@@ -2,15 +2,8 @@ use yew::prelude::*;
 
 use yew_agent::{Dispatcher, Dispatched, Bridge, Bridged};
 
-use js_sys::Object;
-use web_sys::{HtmlSelectElement, HtmlInputElement, PermissionState, PermissionStatus};
+use web_sys::{HtmlSelectElement, HtmlInputElement};
 
-use wasm_bindgen_futures::{spawn_local, JsFuture};
-use wasm_bindgen::closure::Closure;
-use wasm_bindgen::JsValue;
-use serde::{Serialize, Deserialize};
-
-use gloo::utils::window;
 
 use crate::{agents::{canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus},
                      command_msg_bus::{CommandMsgBus, CommandRequest}},
@@ -18,8 +11,6 @@ use crate::{agents::{canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus},
             components::root::{JuliaSetCfg, MandelbrotCfg, FractalType},
 
 };
-
-
 
 pub struct ControlPanel {
     event_bus: Option<Dispatcher<CommandMsgBus>>,
@@ -29,62 +20,6 @@ pub struct ControlPanel {
     view_stats_txt_ref: NodeRef,
     _producer: Box<dyn Bridge<CanvasSelectMsgBus>>,
 }
-
-impl ControlPanel {
-    fn copy_to_clipboard(&self) {
-        info!("copy_to_clipboard entered");
-        let query_obj = Object::from(
-            JsValue::from_serde(&QueryObject {
-                name: String::from("clipboard-write"),
-            })
-                .expect("unable to create JSValue"),
-        );
-
-        info!("copy_to_clipboard: got query_object: {:?}", query_obj);
-        match window()
-            .navigator()
-            .permissions()
-            .expect("no permissipons found in navigator")
-            .query(&query_obj)
-        {
-            Ok(result) => {
-                info!("copy_to_clipboard: query permission returned ok");
-                spawn_local(async move {
-                    let resolve = Closure::wrap(Box::new(|js_value: JsValue|  {
-                        info!("copy_to_clipboard: got Result {:?}", js_value);
-                        let status = PermissionStatus::from(js_value);
-                        info!("copy_to_clipboard: got PermissionStatus {:?}", status.state());
-                        if status.state() == PermissionState::Granted {
-                            let _clipboard = window().navigator().clipboard().expect("clipboard not found");
-
-                            // TODO: do something
-                        }
-                    }) as Box<dyn FnMut(JsValue)>);
-
-                    let reject = Closure::wrap(Box::new(|js_value: JsValue| {
-                        info!(
-                            "copy_to_clipboard: get permission: error {}",
-                            js_value.as_string().unwrap_or("None".to_string())
-                        );
-                    }) as Box<dyn FnMut(JsValue)>);
-
-                    let promise = result.then2(&resolve, &reject);
-                    let res = JsFuture::from(promise).await;
-                    info!("copy_to_clipboard: spawned future returned {:?}", res);
-                });
-                info!("copy_to_clipboard: spawned future locally");
-            },
-            Err(err) => {
-                info!(
-                    "copy_to_clipboard: error from query permissions, msg: {}",
-                    err.as_string().unwrap_or("None".to_string())
-                );
-            }
-        }
-
-    }
-}
-
 
 impl Component for ControlPanel {
     type Message = Msg;
@@ -139,7 +74,7 @@ impl Component for ControlPanel {
             }
             Msg::Copy => {
                 info!("ControlPanel::Copy");
-                self.copy_to_clipboard();
+                self.event_bus.as_mut().expect("CommandMsgBus not initialized").send(CommandRequest::Copy);
                 false
             }
             Msg::TypeChanged => {
@@ -298,7 +233,3 @@ pub enum PanelConfig {
     ConfigMandelbrot(MandelbrotCfg),
 }
 
-#[derive(Serialize, Deserialize)]
-struct QueryObject {
-    pub name: String,
-}

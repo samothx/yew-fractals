@@ -1,10 +1,13 @@
-use js_sys::Object;
-// use wasm_bindgen_futures::JsFuture;
-use web_sys::{ImageData, HtmlCanvasElement, CanvasRenderingContext2d}; //, PermissionStatus, PermissionState};
+use js_sys::{Object, Reflect, Array};
+use png_encode_mini::write_rgba_from_u8;
+use web_sys::{ImageData, HtmlCanvasElement, CanvasRenderingContext2d, PermissionState,
+              PermissionStatus, window, Blob, BlobPropertyBag, ClipboardItem};
 use crate::components::root::{Config, FractalType};
-
+use serde::{Serialize, Deserialize};
 use super::{fractal::Points};
-use wasm_bindgen::{JsValue, JsCast};
+use wasm_bindgen::{JsValue, JsCast, closure::Closure};
+use wasm_bindgen_futures::{spawn_local, JsFuture};
+// use gloo::utils::window;
 
 
 const BACKGROUND_COLOR: &str = "#000000";
@@ -44,58 +47,108 @@ impl Canvas {
         }
     }
 
-    /*
     pub fn copy_to_clipboard(&self) {
         // TODO: understand Promises & Closures in web-sys
-        log!("copy_to_clipboard: entered");
+        info!("copy_to_clipboard: entered");
         let query_obj = Object::from(
             JsValue::from_serde(&QueryObject {
                 name: String::from("clipboard-write"),
             })
-            .expect("unable to create JSValue"),
+                .expect("unable to create JSValue"),
         );
-        log!(format!("copy_to_clipboard: got query_object: {:?}", query_obj));
-        match window()
+
+        // info!("copy_to_clipboard: got query_object: {:?}", query_obj);
+        match window().expect("Window not found")
             .navigator()
             .permissions()
-            .expect("no permissipons found in navigator")
+            .expect("no permissions found in navigator")
             .query(&query_obj)
         {
             Ok(result) => {
-                log!("copy_to_clipboard: query permission returned ok");
-                spawn_local(async move {
-                    let resolve = Closure::wrap(Box::new(|js_value: JsValue|  {
-                        log!(format!("copy_to_clipboard: got Result {:?}", js_value));
-                        let status = PermissionStatus::from(js_value);
-                        log!(format!("copy_to_clipboard: got PermissionStatus {:?}", status.state()));
-                        if (status.state() == PermissionState::Granted) {
-                            // TODO: do something 
-                        }
-                    }) as Box<dyn FnMut(JsValue)>);
+                info!("copy_to_clipboard: query permission returned ok");
 
-                    let reject = Closure::wrap(Box::new(|js_value: JsValue| {
-                        log!(format!(
+                let image_data = self.get_2d_context()
+                    .get_image_data(
+                        0.0,
+                        0.0,
+                        self.canvas.width().into(),
+                        self.canvas.height().into(),
+                    )
+                    .expect("failed to retrieve image data")
+                    .dyn_into::<ImageData>()
+                    .expect("Failed to cast to ImageData").data().clone();
+                let mut img_u8: Vec<u8> = Vec::new();
+                match write_rgba_from_u8(&mut img_u8,
+                                         &(*image_data)[..],
+                                         self.canvas.width(),
+                                         self.canvas.height()) {
+                    Ok(()) => {
+                        // Create an U8Array
+                        let u8_array = Array::new();
+                        img_u8.iter().for_each(|val| {
+                            u8_array.push(&JsValue::from(*val));
+                        });
+                        // Create Blob from type & U8Array
+                        let mut options =  BlobPropertyBag::new();
+                        options.type_("image/png");
+                        let blob = Blob::new_with_u8_array_sequence_and_options(&JsValue::from(u8_array),&options)
+                            .expect("Failed to create blob");
+                        // Create ClipboardItem from Blob
+                        let items_obj = Object::new();
+                        Reflect::set(&items_obj, &blob.type_().into(), &blob)
+                            .expect("Failed to write blob to object ");
+                        let item = ClipboardItem::from(JsValue::from(items_obj));
+                        // Create array of ClipboardItems
+                        let items = js_sys::Array::new();
+                        items.push(&item);
+
+                        spawn_local(async move {
+                            let resolve = Closure::wrap(Box::new(move |js_value: JsValue| {
+                                // info!("copy_to_clipboard: got Result {:?}", js_value);
+
+                                let status = PermissionStatus::from(js_value);
+                                // info!("copy_to_clipboard: got PermissionStatus {:?}", status.state());
+                                if status.state() == PermissionState::Granted {
+                                    info!("copy_to_clipboard: got permission to copy to clipboard");
+                                    let clipboard = window().expect("Window not found")
+                                        .navigator()
+                                        .clipboard().expect("Clipboard not found");
+                                    JsFuture::from(clipboard.write(&items)).await;
+
+                                    // TODO: do something
+                                }
+                            }) as Box<dyn FnMut(JsValue)>);
+
+                            let reject = Closure::wrap(Box::new(|js_value: JsValue| {
+                                warn!(
                             "copy_to_clipboard: get permission: error {}",
                             js_value.as_string().unwrap_or("None".to_string())
-                        ));
-                    }) as Box<dyn FnMut(JsValue)>);
+                        );
+                            }) as Box<dyn FnMut(JsValue)>);
 
-                    let promise = result.then2(&resolve, &reject);
-                    let res = JsFuture::from(promise).await;
-                    log!(format!("copy_to_clipboard: spawned future returned {:?}", res));
-                });
-                log!("copy_to_clipboard: spawned future locally");
-            },
+                            let promise = result.then2(&resolve, &reject);
+                            let _res = JsFuture::from(promise).await;
+                            // info!("copy_to_clipboard: spawned future returned {:?}", res);
+                        });
+                    }
+                    Err(err) => {
+                        error!("Failed to create png from imagedata, error: {:?}", err);
+                        return;
+                    }
+                }
+
+
+                // info!("copy_to_clipboard: spawned future locally");
+            }
             Err(err) => {
-                log!(format!(
+                warn!(
                     "copy_to_clipboard: error from query permissions, msg: {}",
                     err.as_string().unwrap_or("None".to_string())
-                ));    
+                );
             }
         }
-
     }
-*/
+
     pub fn clear_canvas(&mut self, width: u32, height: u32) {
         info!("Clear Canvas");
         if height != self.canvas.height() {
@@ -225,9 +278,9 @@ impl Canvas {
     }
 
     #[allow(
-        clippy::many_single_char_names,
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss
+    clippy::many_single_char_names,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
     )]
     fn hue_to_rgb(hue: f32) -> String {
         const TMP: f32 = 2.0 * DEFAULT_LIGHTNESS - 1.0;
@@ -254,10 +307,10 @@ impl Canvas {
     }
 
     #[allow(
-        dead_code,
-        clippy::many_single_char_names,
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss
+    dead_code,
+    clippy::many_single_char_names,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
     )]
     fn hsl_to_rgb(hue: f32, saturation: f32, lightness: f32) -> String {
         // see: https://www.rapidtables.com/convert/color/hsl-to-rgb.html
@@ -292,9 +345,15 @@ impl Canvas {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+struct QueryObject {
+    pub name: String,
+}
+
 #[cfg(test)]
 mod test {
     use super::Canvas;
+
     #[test]
     fn test_iterations_as_hue_to_rgb() {
         assert_eq!(Canvas::hue_to_rgb(0.0), "#FF0000");
