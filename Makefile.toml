@@ -29,40 +29,65 @@ dependencies = ["fmt", "clippy", "test_h_firefox"]
 description = "Cleanup dist dir"
 command = "rm"
 args = ["-rf", "dist"]
+dependencies = ["clean_archive"]
+
+[tasks.clean_archive]
+description = "remove archive"
+command = "rm"
+args = ["-f", "yew-fractals.tgz"]
+
+# ---- PROVISION ----
+
+[tasks.provision]
+description = "Build & prepare for provisioning"
+dependencies = ["build", "mod_index","tar"]
+
+[tasks.provision_release]
+description = "Build Release & prepare for provisioning"
+dependencies = ["build_release", "mod_index","tar"]
+
+[tasks.tar]
+description = "pack dist"
+command = "tar"
+args = ["-czf","yew-fractals.tgz","-C","dist","." ]
+
+[tasks.mod_index]
+description = "Modify index file"
+dependencies = ["mod_index_pkg", "mod_index_css"]
+
+[tasks.mod_index_pkg]
+description = "Modify index file pkg refs"
+command = "sed"
+args = ["-i","s/pkg\\//yew-fractals\\/pkg\\//", "dist/index.html" ]
+
+[tasks.mod_index_css]
+description = "Modify index file css refs"
+command = "sed"
+args = ["-i","s/css\\//yew-fractals\\/css\\//", "dist/index.html" ]
 
 # ---- BUILD ----
 
 [tasks.build]
 description = "Build & copy to dist"
-dependencies = ["build_wasm_release", "copy"]
+dependencies = ["mkdirs", "sass", "build_wasm", "copy"]
 
 [tasks.build_release]
 description = "Build with wasm-pack in release mode & copy to dist"
-dependencies = ["build_wasm", "copy"]
+dependencies = ["mkdirs", "sass", "build_wasm_release", "copy"]
 
 [tasks.build_wasm]
 description = "Build with wasm-pack"
 install_crate = { crate_name = "wasm-pack", binary = "wasm-pack", test_arg = "-V" }
 command = "wasm-pack"
-args = ["build", "--target", "web", "--out-name", "package", "--dev"]
-dependencies = ["mkdirs", "sass", "copy"]
+args = ["build", "--target", "web", "--out-name", "package", "--dev", "--out-dir", "dist/pkg"]
 
 [tasks.build_wasm_release]
 description = "Build with wasm-pack in release mode"
 install_crate = { crate_name = "wasm-pack", binary = "wasm-pack", test_arg = "-V" }
 command = "wasm-pack"
-args = ["build", "--target", "web", "--out-name", "package"]
+args = ["build", "--target", "web", "--out-name", "package", "--out-dir", "dist/pkg"]
 
 [tasks.copy]
-description = "Copy stuff to dist dir"
-dependencies = ["mkdirs", "copy_index", "copy_pkg", "sass"]
-
-[tasks.copy_pkg]
-description = "Copy pkg dir to dist dir"
-command = "cp"
-args = ["-r", "pkg", "dist/"]
-
-[tasks.copy_index]
 description = "Copy index.html to dist dir"
 command = "cp"
 args = ["index.html", "dist/index.html"]

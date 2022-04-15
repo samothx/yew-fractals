@@ -37,12 +37,12 @@ impl Component for Disclaimer {
                 <h1>{"Sorry - this page is currently not yet mobile friendly"}</h1>
                 <p class="disclaimer_text">
                 {"\
-By design calculating and displaying fractals requires ample processing power and solid screen resolution.
-Also using a touchscreen makes getting the events for dragging rectangles on the drawing area kind of tricky."}
+By design calculating and displaying fractals requires ample processing power and solid screen resolution."
+                }
                 </p>
                 <p class="disclaimer_text">
                     {"\
-So far I have not gotten around to creating alternative layouts and solutions for small screens and touch input so this page
+So far I have not gotten around to creating alternative layouts and solutions for small screens so this page
 is best viewed on a computer."}
                 </p>
                 <button type="button" {onclick} class="disclaimer_button" id="no_mobile_ok">
