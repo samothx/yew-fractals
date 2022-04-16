@@ -1,7 +1,7 @@
-use js_sys::{Object, Reflect, Array};
+use js_sys::{Object, Reflect, Uint8Array};
 use png_encode_mini::write_rgba_from_u8;
 use web_sys::{ImageData, HtmlCanvasElement, CanvasRenderingContext2d, PermissionState,
-              PermissionStatus, window, Blob, BlobPropertyBag, ClipboardItem};
+              PermissionStatus, window, Blob, BlobPropertyBag};
 use crate::components::root::{Config, FractalType};
 use serde::{Serialize, Deserialize};
 use super::{fractal::Points};
@@ -9,6 +9,8 @@ use wasm_bindgen::{JsValue, JsCast};
 use wasm_bindgen_futures::{spawn_local, JsFuture};
 // use gloo::utils::window;
 
+mod clipboard_item;
+use clipboard_item::ClipboardItem;
 
 const BACKGROUND_COLOR: &str = "#000000";
 
@@ -77,27 +79,27 @@ impl Canvas {
             Ok(()) => {
                 // Create an U8Array
                 info!("copy_to_clipboard: creating JsArray from png at offset: {:.3} secs", (performance.now() - start) / 1000.0);
-                let u8_array = Array::new();
-                img_u8.iter().for_each(|val| {
-                    u8_array.push(&JsValue::from(*val));
-                });
-                // Create Blob from type & U8Array
+                let u8_array = Uint8Array::from(&img_u8[..]);
                 let mut options = BlobPropertyBag::new();
                 options.type_("image/png");
                 info!("copy_to_clipboard: creating Blob from JsArray at offset: {:.3} secs", (performance.now() - start) / 1000.0);
-                let blob = Blob::new_with_u8_array_sequence_and_options(&JsValue::from(u8_array), &options)
+                let blob = Blob::new_with_u8_array_sequence_and_options(&u8_array, &options)
                     .expect("Failed to create blob");
                 // Create ClipboardItem from Blob
+                info!("copy_to_clipboard: got blob: {:?}", blob);
                 info!("copy_to_clipboard: creating ClipboardItem from Blob  at offset: {:.3} secs", (performance.now() - start) / 1000.0);
-                let items_obj = Object::new();
-                Reflect::set(&items_obj, &blob.type_().into(), &blob)
+                let clip_content = Object::new();
+                Reflect::set(&clip_content, &JsValue::from("image/png"), &blob)
                     .expect("Failed to write blob to object ");
-                let item = ClipboardItem::from(JsValue::from(items_obj));
-                info!("copy_to_clipboard: got ClipboardItem: {:?}", item);
+
+                let item = ClipboardItem::new(&clip_content);
+
+                // info!("copy_to_clipboard: got ClipboardItem: {:?}", item);
                 // Create array of ClipboardItems
                 info!("copy_to_clipboard: creating Array of ClipboardItems at offset: {:.3} secs", (performance.now() - start) / 1000.0);
-                let items = js_sys::Array::new();
-                items.push(&item);
+                let items = [item].iter().collect::<js_sys::Array>();
+                // let items = js_sys::Array::new();
+                // items.push(&item);
                 items
             },
             Err(err) => {
@@ -132,7 +134,7 @@ impl Canvas {
                         let clipboard = window().expect("Window not found")
                             .navigator()
                             .clipboard().expect("Clipboard not found");
-                        match JsFuture::from(clipboard.write(&items)).await {
+                        match JsFuture::from(clipboard.write(&items.into())).await {
                             Ok(_res) => info!("copy_to_clipboard: png image copied to clipboard"),
                             Err(err) => error!("copy_to_clipboard: failed to copy png image to clipboard, error: {:?}", err)
                         }
