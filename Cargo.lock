@@ -547,6 +547,7 @@ name = "fractal-explorer"
 version = "0.1.0"
 dependencies = [
  "gloo 0.6.1",
+ "gloo-file",
  "gloo-timers",
  "js-sys",
  "log",

@@ -1,12 +1,14 @@
-use js_sys::{Object, Reflect, Uint8Array};
+use js_sys::{Object, Reflect};
 use png_encode_mini::write_rgba_from_u8;
 use web_sys::{ImageData, HtmlCanvasElement, CanvasRenderingContext2d, PermissionState,
-              PermissionStatus, window, Blob, BlobPropertyBag};
+              PermissionStatus, window};
 use crate::components::root::{Config, FractalType};
 use serde::{Serialize, Deserialize};
 use super::{fractal::Points};
 use wasm_bindgen::{JsValue, JsCast};
 use wasm_bindgen_futures::{spawn_local, JsFuture};
+use gloo_file::Blob;
+
 // use gloo::utils::window;
 
 mod clipboard_item;
@@ -70,26 +72,34 @@ impl Canvas {
             .dyn_into::<ImageData>()
             .expect("Failed to cast to ImageData").data();
 
+        info!("copy_to_clipboard: flipping image data vertically at offset: {:.3} secs", (performance.now() - start) / 1000.0);
+        let mut flipped_u8: Vec<u8> = Vec::new();
+        flipped_u8.resize(image_data.len(),0);
+        let rows = self.canvas.height() as usize;
+        let cols = self.canvas.width() as usize;
+        (0..rows).for_each(|row|{
+            (0..cols).for_each(|col|{
+               let read_offset = (row * cols + col) * 4;
+               let write_offset = ((rows - row - 1) * cols + col) * 4;
+                (0..4).for_each(|idx| flipped_u8[write_offset + idx] = image_data[read_offset + idx]);
+           })
+        });
+
         info!("copy_to_clipboard: converting to png at offset: {:.3} secs", (performance.now() - start) / 1000.0);
+
         let mut img_u8: Vec<u8> = Vec::new();
         let items = match write_rgba_from_u8(&mut img_u8,
-                                             &(*image_data)[..],
+                                             &(*flipped_u8)[..],
                                              self.canvas.width(),
                                              self.canvas.height()) {
             Ok(()) => {
                 // Create an U8Array
-                info!("copy_to_clipboard: creating JsArray from png at offset: {:.3} secs", (performance.now() - start) / 1000.0);
-                let u8_array = Uint8Array::from(&img_u8[..]);
-                let mut options = BlobPropertyBag::new();
-                options.type_("image/png");
-                info!("copy_to_clipboard: creating Blob from JsArray at offset: {:.3} secs", (performance.now() - start) / 1000.0);
-                let blob = Blob::new_with_u8_array_sequence_and_options(&u8_array, &options)
-                    .expect("Failed to create blob");
-                // Create ClipboardItem from Blob
-                info!("copy_to_clipboard: got blob: {:?}", blob);
+                info!("copy_to_clipboard: creating gloo::Blob from png at offset: {:.3} secs",
+                    (performance.now() - start) / 1000.0);
+                let blob = Blob::new_with_options(&img_u8[..], Some("image/png"));
                 info!("copy_to_clipboard: creating ClipboardItem from Blob  at offset: {:.3} secs", (performance.now() - start) / 1000.0);
                 let clip_content = Object::new();
-                Reflect::set(&clip_content, &JsValue::from("image/png"), &blob)
+                Reflect::set(&clip_content, &JsValue::from("image/png"), &JsValue::from(blob))
                     .expect("Failed to write blob to object ");
 
                 let item = ClipboardItem::new(&clip_content);
