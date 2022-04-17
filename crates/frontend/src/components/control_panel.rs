@@ -145,7 +145,6 @@ impl Component for ControlPanel {
         let on_type_changed = ctx.link().callback(|_| Msg::TypeChanged);
         let on_view_stats_changed = ctx.link().callback(|_| Msg::ViewStatsChanged);
 
-
         html![
             <div class="button_cntr">
                 <button class="menu_button" id="start" onclick={on_start}
@@ -165,8 +164,8 @@ impl Component for ControlPanel {
                     {"Edit"}
                 </button>
                 <button class="menu_button" id="copy" onclick={on_copy}
-                        disabled={ true }>
-                        // disabled={ !self.paused || ctx.props().edit_mode }>
+                        //disabled={ true }>
+                        disabled={ !self.paused || ctx.props().edit_mode }>
                     {"Copy"}
                 </button>
                 <label class="type_select_label" for="type_select">
