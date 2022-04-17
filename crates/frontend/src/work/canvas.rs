@@ -68,7 +68,7 @@ impl Canvas {
             )
             .expect("failed to retrieve image data")
             .dyn_into::<ImageData>()
-            .expect("Failed to cast to ImageData").data().clone();
+            .expect("Failed to cast to ImageData").data();
 
         info!("copy_to_clipboard: converting to png at offset: {:.3} secs", (performance.now() - start) / 1000.0);
         let mut img_u8: Vec<u8> = Vec::new();
@@ -110,7 +110,7 @@ impl Canvas {
 
         info!("copy_to_clipboard: creating query for clipboard permissions at offset: {:.3} secs", (performance.now() - start) / 1000.0);
         let query_obj = Object::new();
-        Reflect::set(&query_obj, &JsValue::from("name"), &&JsValue::from("clipboard-write"))
+        Reflect::set(&query_obj, &JsValue::from("name"), &JsValue::from("clipboard-write"))
             .expect("Failed to write blob to object ");
 
         // info!("copy_to_clipboard: got query_object: {:?}", query_obj);
@@ -146,7 +146,7 @@ impl Canvas {
             Err(err) => {
                 warn!(
                     "copy_to_clipboard: error from query permissions, msg: {}",
-                    err.as_string().unwrap_or("None".to_string())
+                    err.as_string().unwrap_or_else(|| "None".to_string())
                 );
             }
         }
