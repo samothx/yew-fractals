@@ -7,7 +7,9 @@ use crate::work::complex::Complex;
 use super::{disclaimer::Disclaimer, control_panel::ControlPanel, canvas_element::CanvasElement,
             edit_julia_cfg::EditJuliaCfg,
             edit_mandelbrot_cfg::EditMandelbrotCfg,
+            modal::{ModalOk,ModalPlain},
             control_panel::PanelConfig::{ConfigJuliaSet, ConfigMandelbrot}};
+use crate::agents::clipboard_worker::OutputMsg;
 
 
 pub const JULIA_DEFAULT_X_MAX: (f64, f64) = (1.5, 1.0);
@@ -30,7 +32,9 @@ pub const DEFAULT_WIDTH: u32 = 1024;
 pub struct Root {
     config: Config,
     edit_mode: bool,
-    canvas_height: u32
+    canvas_height: u32,
+    show_ctc_preparing: bool,
+    show_ctc_done: bool,
 }
 
 impl Component for Root {
@@ -43,7 +47,9 @@ impl Component for Root {
         Self {
             config,
             edit_mode: false,
-            canvas_height
+            canvas_height,
+            show_ctc_preparing: false,
+            show_ctc_done: false,
         }
     }
 
@@ -83,6 +89,16 @@ impl Component for Root {
                 self.edit_mode = true;
                 true
             }
+            Msg::CtcActive => {
+                info!("Root::update: CtcActive");
+                self.show_ctc_preparing = true;
+                true
+            }
+            Msg::CtcDone(output) => {
+                info!("Root::update: CtcDone: {:?}", output);
+                self.show_ctc_preparing = false;
+                true
+            }
         }
     }
 
@@ -103,9 +119,16 @@ impl Component for Root {
                         on_type_changed={ctx.link().callback(Msg::TypeChanged)}
                         on_edit={ctx.link().callback(|_| Msg::EditConfig)}
                         on_view_stats_changed={ctx.link().callback(Msg::ViewStatsChanged)}
+                        on_ctc_active={ctx.link().callback(|_| Msg::CtcActive)}
+                        on_ctc_done={ctx.link().callback(Msg::CtcDone)}
                         edit_mode={self.edit_mode}
                     />
                     <div class="fractal_container">
+                        <ModalPlain
+                            visible={self.show_ctc_preparing}
+                            title={"Copy to Clipboard".to_owned()}
+                            message={"Preparing image to be copied to clipboard.".to_owned()}
+                        />
                         <EditJuliaCfg edit_mode={self.edit_mode && self.config.active_config == FractalType::JuliaSet}
                                         config={self.config.julia_set_cfg.clone()}
                                         canvas_width={DEFAULT_WIDTH}
@@ -139,6 +162,8 @@ pub enum Msg {
     EditCfgCanceled,
     TypeChanged(FractalType),
     ViewStatsChanged(bool),
+    CtcActive,
+    CtcDone(OutputMsg),
     EditConfig,
 }
 

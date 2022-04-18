@@ -20,7 +20,7 @@ extern "C" {
 }
 
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct OutputMsg {
     pub success: bool,
     pub msg: Option<String>

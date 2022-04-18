@@ -80,20 +80,22 @@ impl Component for ControlPanel {
             Msg::Copy => {
                 info!("ControlPanel::Copy");
                 if self.clipboard_worker.is_some() {
-                    // TODO: print busy dialogue
+                    error!("copy to clipboard is busy")
                 } else {
                     let mut worker_bridge = ClipboardWorker::bridge(
                         ctx.link().callback(|r| Msg::ClipboardRes(r))
                     );
+                    ctx.props().on_ctc_active.emit(());
                     worker_bridge.send(());
                     self.clipboard_worker = Some(worker_bridge);
                 }
                 false
             }
-            Msg::ClipboardRes(_res) => {
+            Msg::ClipboardRes(res) => {
                 // TODO: display clipboard success / error
                 info!("ControlPanel::ClipboardRes");
                 self.clipboard_worker = None;
+                ctx.props().on_ctc_done.emit(res);
                 false
             }
             Msg::TypeChanged => {
@@ -183,8 +185,7 @@ impl Component for ControlPanel {
                     {"Edit"}
                 </button>
                 <button class="menu_button" id="copy" onclick={on_copy}
-                        //disabled={ true }>
-                        disabled={ !self.paused || ctx.props().edit_mode }>
+                        disabled={ self.clipboard_worker.is_some() || !self.paused || ctx.props().edit_mode }>
                     {"Copy"}
                 </button>
                 <label class="type_select_label" for="type_select">
@@ -245,6 +246,8 @@ pub struct ControlPanelProps {
     pub on_type_changed: Callback<FractalType>,
     pub on_edit: Callback<()>,
     pub on_view_stats_changed: Callback<bool>,
+    pub on_ctc_active: Callback<()>,
+    pub on_ctc_done: Callback<OutputMsg>,
 }
 
 #[derive(PartialEq, Clone)]
