@@ -6,14 +6,18 @@ use web_sys::{HtmlSelectElement, HtmlInputElement};
 
 
 use crate::{agents::{canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus},
-                     command_msg_bus::{CommandMsgBus, CommandRequest}},
+                     command_msg_bus::{CommandMsgBus, CommandRequest},
+                     clipboard_worker::{OutputMsg,ClipboardWorker},
+                    },
             work::util::set_value_on_txt_area_ref,
             components::root::{JuliaSetCfg, MandelbrotCfg, FractalType},
 
 };
 
+
 pub struct ControlPanel {
     event_bus: Option<Dispatcher<CommandMsgBus>>,
+    clipboard_worker: Option<Box<dyn Bridge<ClipboardWorker>>>,
     paused: bool,
     type_sel_ref: NodeRef,
     view_stats_cb_ref: NodeRef,
@@ -27,6 +31,7 @@ impl Component for ControlPanel {
 
     fn create(ctx: &Context<Self>) -> Self {
         ControlPanel {
+            clipboard_worker: None,
             event_bus: None,
             paused: true,
             type_sel_ref: NodeRef::default(),
@@ -74,7 +79,21 @@ impl Component for ControlPanel {
             }
             Msg::Copy => {
                 info!("ControlPanel::Copy");
-                self.event_bus.as_mut().expect("CommandMsgBus not initialized").send(CommandRequest::Copy);
+                if self.clipboard_worker.is_some() {
+                    // TODO: print busy dialogue
+                } else {
+                    let mut worker_bridge = ClipboardWorker::bridge(
+                        ctx.link().callback(|r| Msg::ClipboardRes(r))
+                    );
+                    worker_bridge.send(());
+                    self.clipboard_worker = Some(worker_bridge);
+                }
+                false
+            }
+            Msg::ClipboardRes(_res) => {
+                // TODO: display clipboard success / error
+                info!("ControlPanel::ClipboardRes");
+                self.clipboard_worker = None;
                 false
             }
             Msg::TypeChanged => {
@@ -215,6 +234,7 @@ pub enum Msg {
     TypeChanged,
     ViewStatsChanged,
     CanvasMsg(CanvasMsgRequest),
+    ClipboardRes(OutputMsg)
 }
 
 #[derive(Properties, PartialEq, Clone)]

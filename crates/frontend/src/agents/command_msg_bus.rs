@@ -46,6 +46,5 @@ pub enum CommandRequest {
     Start,
     Stop,
     Clear,
-    Copy
 }
 

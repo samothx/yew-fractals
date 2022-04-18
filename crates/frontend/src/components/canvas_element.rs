@@ -231,12 +231,6 @@ impl Component for CanvasElement {
                         }
                         false
                     }
-                    CommandRequest::Copy => {
-                        if let Some(canvas) = self.canvas.as_ref() {
-                            canvas.copy_to_clipboard();
-                        }
-                        false
-                    }
                 }
             }
             Msg::OnDraw => {
