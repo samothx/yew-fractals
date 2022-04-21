@@ -7,7 +7,7 @@ use web_sys::{HtmlSelectElement, HtmlInputElement};
 
 use crate::{agents::{canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus},
                      command_msg_bus::{CommandMsgBus, CommandRequest},
-                     clipboard_worker::{OutputMsg,ClipboardWorker},
+                     clipboard_worker::{WorkerStatus,ClipboardWorker},
                     },
             work::util::set_value_on_txt_area_ref,
             components::root::{JuliaSetCfg, MandelbrotCfg, FractalType},
@@ -92,10 +92,20 @@ impl Component for ControlPanel {
                 false
             }
             Msg::ClipboardRes(res) => {
-                // TODO: display clipboard success / error
                 info!("ControlPanel::ClipboardRes");
-                self.clipboard_worker = None;
-                ctx.props().on_ctc_done.emit(res);
+                match &res {
+                    WorkerStatus::Failure(_) | WorkerStatus::Complete => {
+                        self.clipboard_worker = None;
+                        ctx.props().on_ctc_done.emit(res);
+                    }
+                    WorkerStatus::Pending => {
+                        if let Some(worker_bridge) = self.clipboard_worker.as_mut() {
+                            worker_bridge.send(());
+                        } else {
+                            ctx.props().on_ctc_done.emit(WorkerStatus::Failure("Worker not initialized".to_owned()));
+                        }
+                    }
+                }
                 false
             }
             Msg::TypeChanged => {
@@ -235,7 +245,7 @@ pub enum Msg {
     TypeChanged,
     ViewStatsChanged,
     CanvasMsg(CanvasMsgRequest),
-    ClipboardRes(OutputMsg)
+    ClipboardRes(WorkerStatus)
 }
 
 #[derive(Properties, PartialEq, Clone)]
@@ -247,7 +257,7 @@ pub struct ControlPanelProps {
     pub on_edit: Callback<()>,
     pub on_view_stats_changed: Callback<bool>,
     pub on_ctc_active: Callback<()>,
-    pub on_ctc_done: Callback<OutputMsg>,
+    pub on_ctc_done: Callback<WorkerStatus>,
 }
 
 #[derive(PartialEq, Clone)]

@@ -10,7 +10,7 @@ impl Component for ModalPlain {
     type Message = ();
     type Properties = ModalPlainProps;
 
-    fn create(ctx: &Context<Self>) -> Self {
+    fn create(_ctx: &Context<Self>) -> Self {
         Self{
             modal_ref: NodeRef::default(),
             msg_ref: NodeRef::default(),
@@ -18,7 +18,7 @@ impl Component for ModalPlain {
         }
     }
 
-    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, _ctx: &Context<Self>, _msg: Self::Message) -> bool {
         todo!()
     }
 
@@ -33,6 +33,7 @@ impl Component for ModalPlain {
         html![
             <div class={class} ref={self.modal_ref.clone()} >
                 <div class="modal-content">
+                    <h2 ref={self.title_ref.clone()}>{ctx.props().title.as_str()}</h2>
                     <p ref={self.msg_ref.clone()}>{ctx.props().message.as_str()}</p>
                 </div>
             </div>

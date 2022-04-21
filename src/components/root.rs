@@ -9,7 +9,7 @@ use super::{disclaimer::Disclaimer, control_panel::ControlPanel, canvas_element:
             edit_mandelbrot_cfg::EditMandelbrotCfg,
             modal::{ModalOk,ModalPlain},
             control_panel::PanelConfig::{ConfigJuliaSet, ConfigMandelbrot}};
-use crate::agents::clipboard_worker::OutputMsg;
+use crate::agents::clipboard_worker::WorkerStatus;
 
 
 pub const JULIA_DEFAULT_X_MAX: (f64, f64) = (1.5, 1.0);
@@ -129,6 +129,11 @@ impl Component for Root {
                             title={"Copy to Clipboard".to_owned()}
                             message={"Preparing image to be copied to clipboard.".to_owned()}
                         />
+                        <ModalOk
+                            visible={self.show_ctc_done}
+                            title={"Copy to Clipboard".to_owned()}
+                            message={"Image copied to clipboard.".to_owned()}
+                        />
                         <EditJuliaCfg edit_mode={self.edit_mode && self.config.active_config == FractalType::JuliaSet}
                                         config={self.config.julia_set_cfg.clone()}
                                         canvas_width={DEFAULT_WIDTH}
@@ -163,7 +168,7 @@ pub enum Msg {
     TypeChanged(FractalType),
     ViewStatsChanged(bool),
     CtcActive,
-    CtcDone(OutputMsg),
+    CtcDone(WorkerStatus),
     EditConfig,
 }
 

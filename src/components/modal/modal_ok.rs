@@ -11,17 +11,16 @@ impl Component for ModalOk {
     type Message = ();
     type Properties = ModalOkProps;
 
-    fn create(ctx: &Context<Self>) -> Self {
+    fn create(_ctx: &Context<Self>) -> Self {
         Self{
             modal_ref: NodeRef::default(),
             msg_ref: NodeRef::default(),
             title_ref: NodeRef::default(),
             btn_ref: NodeRef::default()
-
         }
     }
 
-    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, _ctx: &Context<Self>, _msg: Self::Message) -> bool {
         todo!()
     }
 
@@ -36,6 +35,7 @@ impl Component for ModalOk {
             <div class={class} ref={self.modal_ref.clone()} >
                 <div class="modal-content">
                     <span class="modal_ok_close" ref={self.btn_ref.clone()}>{"&times;"}</span>
+                    <h2 ref={self.title_ref.clone()}>{ctx.props().title.as_str()}</h2>
                     <p ref={self.msg_ref.clone()}>{ctx.props().message.as_str()}</p>
                 </div>
             </div>
