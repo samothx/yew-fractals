@@ -89,9 +89,9 @@ impl Component for Root {
                 self.edit_mode = true;
                 true
             }
-            Msg::CtcActive => {
+            Msg::CtcActive(status) => {
                 info!("Root::update: CtcActive");
-                self.show_ctc_preparing = true;
+                self.show_ctc_preparing = status;
                 true
             }
             Msg::CtcDone(output) => {
@@ -119,7 +119,7 @@ impl Component for Root {
                         on_type_changed={ctx.link().callback(Msg::TypeChanged)}
                         on_edit={ctx.link().callback(|_| Msg::EditConfig)}
                         on_view_stats_changed={ctx.link().callback(Msg::ViewStatsChanged)}
-                        on_ctc_active={ctx.link().callback(|_| Msg::CtcActive)}
+                        on_ctc_active={ctx.link().callback(Msg::CtcActive)}
                         on_ctc_done={ctx.link().callback(Msg::CtcDone)}
                         edit_mode={self.edit_mode}
                     />
@@ -167,7 +167,7 @@ pub enum Msg {
     EditCfgCanceled,
     TypeChanged(FractalType),
     ViewStatsChanged(bool),
-    CtcActive,
+    CtcActive(bool),
     CtcDone(WorkerStatus),
     EditConfig,
 }

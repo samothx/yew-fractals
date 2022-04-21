@@ -13,6 +13,8 @@ use crate::{agents::{canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus},
             components::root::{JuliaSetCfg, MandelbrotCfg, FractalType},
 
 };
+use wasm_bindgen_futures::spawn_local;
+use gloo::timers::future::TimeoutFuture;
 
 
 pub struct ControlPanel {
@@ -25,6 +27,14 @@ pub struct ControlPanel {
     _producer: Box<dyn Bridge<CanvasSelectMsgBus>>,
 }
 
+impl ControlPanel {
+    fn send_delayed(&self, cb: yew::Callback<()>) {
+        spawn_local(async move {
+            TimeoutFuture::new(0).await;
+            cb.emit(())
+        });
+    }
+}
 impl Component for ControlPanel {
     type Message = Msg;
     type Properties = ControlPanelProps;
@@ -82,12 +92,20 @@ impl Component for ControlPanel {
                 if self.clipboard_worker.is_some() {
                     error!("copy to clipboard is busy")
                 } else {
-                    let mut worker_bridge = ClipboardWorker::bridge(
+                    self.clipboard_worker = Some(ClipboardWorker::bridge(
                         ctx.link().callback(|r| Msg::ClipboardRes(r))
-                    );
-                    ctx.props().on_ctc_active.emit(());
+                    ));
+                    ctx.props().on_ctc_active.emit(true);
+                    self.send_delayed(ctx.link().callback(|_| Msg::CopyStart));
+                }
+                false
+            }
+            Msg::CopyStart => {
+                if let Some(worker_bridge) = self.clipboard_worker.as_mut() {
                     worker_bridge.send(());
-                    self.clipboard_worker = Some(worker_bridge);
+                } else {
+                    error!("Unexpected uninitialized worker bridge");
+                    ctx.props().on_ctc_active.emit(false);
                 }
                 false
             }
@@ -242,6 +260,7 @@ pub enum Msg {
     Clear,
     Edit,
     Copy,
+    CopyStart,
     TypeChanged,
     ViewStatsChanged,
     CanvasMsg(CanvasMsgRequest),
@@ -256,7 +275,7 @@ pub struct ControlPanelProps {
     pub on_type_changed: Callback<FractalType>,
     pub on_edit: Callback<()>,
     pub on_view_stats_changed: Callback<bool>,
-    pub on_ctc_active: Callback<()>,
+    pub on_ctc_active: Callback<bool>,
     pub on_ctc_done: Callback<WorkerStatus>,
 }
 
