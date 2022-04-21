@@ -96,15 +96,19 @@ impl Component for ControlPanel {
                         ctx.link().callback(|r| Msg::ClipboardRes(r))
                     ));
                     ctx.props().on_ctc_active.emit(true);
+                    // actual clipboard copy job starts with a delay (on CopyStart) to allow
+                    // root component to show modal first
                     self.send_delayed(ctx.link().callback(|_| Msg::CopyStart));
                 }
                 false
             }
             Msg::CopyStart => {
+                // delayed start of copy to clipboard job
                 if let Some(worker_bridge) = self.clipboard_worker.as_mut() {
                     worker_bridge.send(());
                 } else {
                     error!("Unexpected uninitialized worker bridge");
+                    // tell root component to hide modal again
                     ctx.props().on_ctc_active.emit(false);
                 }
                 false
