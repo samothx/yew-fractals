@@ -4,7 +4,7 @@ use web_sys::window;
 use serde::{Serialize, Deserialize};
 
 use crate::work::complex::Complex;
-use super::{disclaimer::Disclaimer, control_panel::ControlPanel, canvas_element::CanvasElement,
+use super::{control_panel::ControlPanel, canvas_element::CanvasElement,
             edit_julia_cfg::EditJuliaCfg,
             edit_mandelbrot_cfg::EditMandelbrotCfg,
             modal::{ModalOk,ModalPlain},
@@ -35,6 +35,8 @@ pub struct Root {
     canvas_height: u32,
     show_ctc_preparing: bool,
     show_ctc_done: bool,
+    show_disclaimer: bool,
+    ctc_done_msg: String,
 }
 
 impl Component for Root {
@@ -42,6 +44,13 @@ impl Component for Root {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
+        let show_disclaimer = window().expect("Window not found")
+            .match_media("(max-width: 600px)")
+            .expect("Failed to query media")
+            .expect("No media query result")
+            .matches();
+
+        // info!("Root::create: media query result: {}", media_match);
         let config = Config::default();
         let canvas_height= config.get_canvas_height(DEFAULT_WIDTH);
         Self {
@@ -50,6 +59,8 @@ impl Component for Root {
             canvas_height,
             show_ctc_preparing: false,
             show_ctc_done: false,
+            show_disclaimer,
+            ctc_done_msg: String::new()
         }
     }
 
@@ -97,6 +108,21 @@ impl Component for Root {
             Msg::CtcDone(output) => {
                 info!("Root::update: CtcDone: {:?}", output);
                 self.show_ctc_preparing = false;
+                self.show_ctc_done = true;
+                self.ctc_done_msg = match output {
+                    WorkerStatus::Complete => "The image was copied to the clipboard succesfully.".to_owned(),
+                    WorkerStatus::Failure(msg) => format!("Could not copy image to clipboard, error: {}.", msg),
+                    _ => panic!("Invalid WorkerStatus encountered")
+                };
+                true
+            }
+            Msg::CtcModalOk => {
+                self.show_ctc_preparing = false;
+                self.show_ctc_done = false;
+                true
+            }
+            Msg::DisclaimerOk => {
+                self.show_disclaimer = false;
                 true
             }
         }
@@ -108,10 +134,16 @@ impl Component for Root {
             FractalType::Mandelbrot => ConfigMandelbrot(self.config.mandelbrot_cfg.clone())
         };
 
+        let disclaimer_msg = vec!["\
+By design calculating and displaying fractals requires ample processing power and a good screen resolution.".to_owned(),
+            "\
+So far I have not gotten around to creating alternative layouts and solutions for small screens, so this page
+is best viewed on a computer.".to_owned()
+        ];
+
         html! {
             <div class="outer_cntr"> 
                 <h1>{if self.config.active_config == FractalType::Mandelbrot {"Mandelbrot Set"} else {"Julia Set"}}</h1>
-                <Disclaimer/>
                 <div class="inner_cntr">
                     <ControlPanel
                         config={ctrl_panel_cfg}
@@ -132,7 +164,14 @@ impl Component for Root {
                         <ModalOk
                             visible={self.show_ctc_done}
                             title={"Copy to Clipboard".to_owned()}
-                            message={"Image copied to clipboard.".to_owned()}
+                            message={vec![self.ctc_done_msg.clone()]}
+                            on_ok={ctx.link().callback(|_| Msg::CtcModalOk)}
+                        />
+                        <ModalOk
+                            visible={self.show_disclaimer}
+                            title={"Sorry - this page is currently not yet mobile friendly".to_owned()}
+                            message={disclaimer_msg.clone()}
+                            on_ok={ctx.link().callback(|_| Msg::DisclaimerOk)}
                         />
                         <EditJuliaCfg edit_mode={self.edit_mode && self.config.active_config == FractalType::JuliaSet}
                                         config={self.config.julia_set_cfg.clone()}
@@ -169,6 +208,8 @@ pub enum Msg {
     ViewStatsChanged(bool),
     CtcActive(bool),
     CtcDone(WorkerStatus),
+    CtcModalOk,
+    DisclaimerOk,
     EditConfig,
 }
 

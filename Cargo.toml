@@ -41,5 +41,6 @@ features=[ "futures"]
 version = "0.3.56"
 features=[ "Performance", "DomRect", "Element", "ImageData", "Navigator", "Permissions", "Clipboard",
     "PermissionStatus", "PermissionState", "Storage", "HtmlCanvasElement", "CanvasRenderingContext2d",
-    "HtmlSelectElement", "Touch", "TouchEvent", "TouchList", "ClipboardItem"]
+    "HtmlSelectElement", "HtmlDivElement", "Touch", "TouchEvent", "TouchList", "ClipboardItem", "Screen",
+    "MediaQueryList"]
 

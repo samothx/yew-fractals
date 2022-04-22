@@ -5,11 +5,12 @@ pub struct Stats {
     total_time: f64,
     time_in_fractal: f64,
     iterations: usize,
+    tot_points: usize,
     points: usize,
 }
 
 impl Stats {
-    pub fn new() -> Self {
+    pub fn new(tot_points: usize) -> Self {
         let performance = window()
             .expect("Window not found")
             .performance()
@@ -20,6 +21,7 @@ impl Stats {
             total_time: 0.0,
             time_in_fractal: 0.0,
             iterations: 0,
+            tot_points,
             points: 0,
         }
     }
@@ -40,13 +42,14 @@ impl Stats {
         format!(
             "\
 Iterations: {:.4E}
-Points:     {:.4E}
+Points:     {:.4E} ≈ {}%
 Time Calc:  {}
 Tot. Time:  {}
 Iter/Sec:   {:.3}
 Points/Sec: {:.3}
         ",
-            self.iterations, self.points, Stats::format_time(self.time_in_fractal),
+            self.iterations, self.points, (self.points * 100) / self.tot_points,
+            Stats::format_time(self.time_in_fractal),
             Stats::format_time(self.total_time),self.iterations as f64/ self.time_in_fractal,
             self.points as f64 / self.time_in_fractal
         )
