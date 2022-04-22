@@ -111,18 +111,23 @@ impl ClipboardWorker {
 
         self.stage = Stage::Flip(RawData {
             data: image_data,
-            rows: canvas.width() as usize,
-            cols: canvas.height() as usize
+            rows: canvas.height() as usize,
+            cols: canvas.width() as usize,
         });
         Ok(StageRes::Done)
     }
 
     fn handle_flip(&mut self, stage_data: RawData) -> Result<StageRes,String> {
-        let mut flipped_u8: Vec<u8> = Vec::with_capacity(stage_data.rows * stage_data.cols * 4);
+        let data = stage_data.data.data();
+        let mut flipped_u8: Vec<u8> = Vec::with_capacity(data.len());
+        let bytes_per_row = stage_data.cols * 4;
+        assert_eq!(data.len(),bytes_per_row * stage_data.rows);
         for row in (0..stage_data.rows).rev() {
             flipped_u8.extend_from_slice(
-                &stage_data.data.data()[row * stage_data.cols * 4..(row + 1) * stage_data.cols * 4]);
+                &data[(row * bytes_per_row)..((row + 1) * bytes_per_row)]);
         }
+        assert_eq!(data.len(),flipped_u8.len());
+        info!("handle_flip bytes_per_row: {}, rows: {}, data.len(): {}, flipped len: {}", bytes_per_row, stage_data.rows, data.len(), flipped_u8.len());
         self.stage = Stage::PngEncode(FlippedData {
             data: flipped_u8,
             rows: stage_data.rows,
@@ -135,8 +140,8 @@ impl ClipboardWorker {
         let mut img_u8: Vec<u8> = Vec::new();
         write_rgba_from_u8(&mut img_u8,
                            &(*data.data)[..],
-                           data.rows as u32,
-                           data.cols as u32)
+                           data.cols as u32,
+                           data.rows as u32)
             .map_err(|err| format!("Failed to convert image data to png, error: {:?}", err))?;
         self.stage = Stage::MakeItems(PngData{
             data: img_u8

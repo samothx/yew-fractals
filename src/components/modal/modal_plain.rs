@@ -1,5 +1,7 @@
 use yew::{Component, Context, Html, html, NodeRef, Properties};
 
+// TODO: pretty up modal
+
 pub(crate) struct ModalPlain {
     modal_ref: NodeRef,
     msg_ref: NodeRef,
