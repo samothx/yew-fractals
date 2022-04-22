@@ -192,7 +192,8 @@ impl Component for CanvasElement {
                         }
 
                         if ctx.props().config.view_stats {
-                            self.stats = Some(Stats::new());
+                            self.stats = Some(Stats::new(ctx.props().canvas_width as usize *
+                                    ctx.props().canvas_height as usize));
                         }
 
                         let mut fractal: Box<dyn Fractal> = match ctx.props().config.active_config {

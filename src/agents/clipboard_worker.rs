@@ -12,6 +12,8 @@ use wasm_bindgen::prelude::*;
 use std::fmt::{Debug, Formatter};
 use gloo::timers::future::TimeoutFuture;
 
+
+
 #[wasm_bindgen(inline_js = "export const ClipboardItem = window.ClipboardItem")]
 extern "C" {
     pub type ClipboardItem;
