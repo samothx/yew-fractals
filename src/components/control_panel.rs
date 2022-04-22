@@ -7,12 +7,14 @@ use web_sys::{HtmlSelectElement, HtmlInputElement};
 
 use crate::{agents::{canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus},
                      command_msg_bus::{CommandMsgBus, CommandRequest},
-                     clipboard_worker::{OutputMsg,ClipboardWorker},
+                     clipboard_worker::{WorkerStatus,ClipboardWorker},
                     },
             work::util::set_value_on_txt_area_ref,
             components::root::{JuliaSetCfg, MandelbrotCfg, FractalType},
 
 };
+use wasm_bindgen_futures::spawn_local;
+use gloo::timers::future::TimeoutFuture;
 
 
 pub struct ControlPanel {
@@ -25,6 +27,14 @@ pub struct ControlPanel {
     _producer: Box<dyn Bridge<CanvasSelectMsgBus>>,
 }
 
+impl ControlPanel {
+    fn send_delayed(&self, cb: yew::Callback<()>) {
+        spawn_local(async move {
+            TimeoutFuture::new(0).await;
+            cb.emit(())
+        });
+    }
+}
 impl Component for ControlPanel {
     type Message = Msg;
     type Properties = ControlPanelProps;
@@ -80,20 +90,44 @@ impl Component for ControlPanel {
             Msg::Copy => {
                 info!("ControlPanel::Copy");
                 if self.clipboard_worker.is_some() {
-                    // TODO: print busy dialogue
+                    error!("copy to clipboard is busy")
                 } else {
-                    let mut worker_bridge = ClipboardWorker::bridge(
+                    self.clipboard_worker = Some(ClipboardWorker::bridge(
                         ctx.link().callback(|r| Msg::ClipboardRes(r))
-                    );
-                    worker_bridge.send(());
-                    self.clipboard_worker = Some(worker_bridge);
+                    ));
+                    ctx.props().on_ctc_active.emit(true);
+                    // actual clipboard copy job starts with a delay (on CopyStart) to allow
+                    // root component to show modal first
+                    self.send_delayed(ctx.link().callback(|_| Msg::CopyStart));
                 }
                 false
             }
-            Msg::ClipboardRes(_res) => {
-                // TODO: display clipboard success / error
+            Msg::CopyStart => {
+                // delayed start of copy to clipboard job
+                if let Some(worker_bridge) = self.clipboard_worker.as_mut() {
+                    worker_bridge.send(());
+                } else {
+                    error!("Unexpected uninitialized worker bridge");
+                    // tell root component to hide modal again
+                    ctx.props().on_ctc_active.emit(false);
+                }
+                false
+            }
+            Msg::ClipboardRes(res) => {
                 info!("ControlPanel::ClipboardRes");
-                self.clipboard_worker = None;
+                match &res {
+                    WorkerStatus::Failure(_) | WorkerStatus::Complete => {
+                        self.clipboard_worker = None;
+                        ctx.props().on_ctc_done.emit(res);
+                    }
+                    WorkerStatus::Pending => {
+                        if let Some(worker_bridge) = self.clipboard_worker.as_mut() {
+                            worker_bridge.send(());
+                        } else {
+                            ctx.props().on_ctc_done.emit(WorkerStatus::Failure("Worker not initialized".to_owned()));
+                        }
+                    }
+                }
                 false
             }
             Msg::TypeChanged => {
@@ -183,8 +217,7 @@ impl Component for ControlPanel {
                     {"Edit"}
                 </button>
                 <button class="menu_button" id="copy" onclick={on_copy}
-                        //disabled={ true }>
-                        disabled={ !self.paused || ctx.props().edit_mode }>
+                        disabled={ self.clipboard_worker.is_some() || !self.paused || ctx.props().edit_mode }>
                     {"Copy"}
                 </button>
                 <label class="type_select_label" for="type_select">
@@ -231,10 +264,11 @@ pub enum Msg {
     Clear,
     Edit,
     Copy,
+    CopyStart,
     TypeChanged,
     ViewStatsChanged,
     CanvasMsg(CanvasMsgRequest),
-    ClipboardRes(OutputMsg)
+    ClipboardRes(WorkerStatus)
 }
 
 #[derive(Properties, PartialEq, Clone)]
@@ -245,6 +279,8 @@ pub struct ControlPanelProps {
     pub on_type_changed: Callback<FractalType>,
     pub on_edit: Callback<()>,
     pub on_view_stats_changed: Callback<bool>,
+    pub on_ctc_active: Callback<bool>,
+    pub on_ctc_done: Callback<WorkerStatus>,
 }
 
 #[derive(PartialEq, Clone)]

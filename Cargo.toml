@@ -24,6 +24,7 @@ log = "0.4.6"
 wasm-logger = "0.2.0"
 js-sys = "0.3"
 gloo-file = "0.2.1"
+lazy_static = "1.4.0"
 
 [dependencies.yew]
 version = "0.19"
