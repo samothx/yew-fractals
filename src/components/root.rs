@@ -172,6 +172,7 @@ is best viewed on a computer.".to_owned()
                             title={"Sorry - this page is currently not yet mobile friendly".to_owned()}
                             message={disclaimer_msg.clone()}
                             on_ok={ctx.link().callback(|_| Msg::DisclaimerOk)}
+                            background_color={Some("salmon")}
                         />
                         <EditJuliaCfg edit_mode={self.edit_mode && self.config.active_config == FractalType::JuliaSet}
                                         config={self.config.julia_set_cfg.clone()}

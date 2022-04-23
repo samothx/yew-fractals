@@ -56,13 +56,14 @@ impl Component for ModalOk {
     }
 
     fn rendered(&mut self, ctx: &Context<Self>, _first_render: bool) {
+        info!("Root::rendered: bgcolor {:?}", ctx.props().background_color.as_ref());
         let _res = self.content_ref.cast::<HtmlDivElement>().expect("Could not cast to HtmlDivElement")
-        .set_attribute("background-color",
+        .set_attribute("style",format!("background-color:{};",
             if let Some(color) = ctx.props().background_color.as_ref() {
                 color
             } else {
                 DEFAULT_COLOR
-             });
+             }).as_str());
     }
 }
 
