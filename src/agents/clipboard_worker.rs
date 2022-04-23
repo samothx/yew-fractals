@@ -12,8 +12,6 @@ use wasm_bindgen::prelude::*;
 use std::fmt::{Debug, Formatter};
 use gloo::timers::future::TimeoutFuture;
 
-
-
 #[wasm_bindgen(inline_js = "export const ClipboardItem = window.ClipboardItem")]
 extern "C" {
     pub type ClipboardItem;
@@ -40,6 +38,7 @@ struct PngData {
 
 enum Stage {
     Init,
+    GetData,
     Processing,
     Flip(RawData),
     PngEncode(FlippedData),
@@ -56,6 +55,7 @@ impl Debug for Stage {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             Stage::Init => "Init",
+            Stage::GetData => "GetData",
             Stage::Flip(_) => "Flip",
             Stage::PngEncode(_) => "PngEncode",
             Stage::MakeItems(_) => "MakeItems",
@@ -99,7 +99,48 @@ impl ClipboardWorker {
         Ok((canvas, tmp2.clone().dyn_into::<CanvasRenderingContext2d>().expect("Failed to cast to CanvasRenderingContext2d")))
     }
 
-    fn handle_init(&mut self) -> Result<StageRes,String> {
+    async fn process_cb_query(query_promise: Promise) -> Result<(),String> {
+        let query_res = JsFuture::from(query_promise).await
+            .map_err(|err| format!("Failure awaiting copy permission query result: error {:?}", err))?;
+
+        let status = PermissionStatus::from(query_res);
+        // info!("copy_to_clipboard: got PermissionStatus {:?}", status.state());
+        if status.state() == PermissionState::Granted {
+            info!("copy_to_clipboard: got permission to copy to clipboard");
+            Ok(())
+        } else {
+            Err(format!("copy_to_clipboard: not permitted to copy to clipboard: {:?}", status.state()))
+        }
+    }
+
+    fn handle_init(&mut self, id: HandlerId) -> Result<StageRes,String> {
+        let query_obj = Object::new();
+        Reflect::set(&query_obj, &JsValue::from("name"), &JsValue::from("clipboard-write"))
+            .map_err(|err| format!("Failed to write query to object, error: {:?}", err))?;
+
+        // info!("copy_to_clipboard: got query_object: {:?}", query_obj);
+        let query_res = window().ok_or("Window not found".to_owned())?
+            .navigator()
+            .permissions().map_err(|err| format!("Permissions not found, error: {:?}", err))?
+            .query(&query_obj).map_err(|err| format!("Failed to query permissions, error: {:?}", err))?;
+
+        let link_copy = self.link.clone();
+        spawn_local(async move {
+            link_copy.respond(
+                id,
+                match Self::process_cb_query(query_res).await {
+                    Ok(()) => WorkerStatus::Pending,
+                    Err(err) => WorkerStatus::Failure(err)
+                }
+            );
+        });
+
+        self.stage = Stage::GetData;
+        Ok(StageRes::Pending)
+    }
+
+
+    fn handle_get_data(&mut self) -> Result<StageRes,String> {
         let (canvas,context) = Self::get_canvas_and_context()?;
         let image_data = context
             .get_image_data(
@@ -165,43 +206,24 @@ impl ClipboardWorker {
     }
 
 
-    async fn process_async(query_promise: Promise, data: js_sys::Array) -> Result<(),String> {
-        let query_res = JsFuture::from(query_promise).await
-            .map_err(|err| format!("Failure awaiting copy permission query result: error {:?}", err))?;
+    async fn process_copy(data: js_sys::Array) -> Result<(),String> {
+        let clipboard = window().ok_or("Window not found".to_owned())?
+            .navigator()
+            .clipboard().ok_or("Clipboard not found".to_owned())?;
 
-        let status = PermissionStatus::from(query_res);
-        // info!("copy_to_clipboard: got PermissionStatus {:?}", status.state());
-        if status.state() == PermissionState::Granted {
-            info!("copy_to_clipboard: got permission to copy to clipboard");
-            let clipboard = window().ok_or("Window not found".to_owned())?
-                .navigator()
-                .clipboard().ok_or("Clipboard not found".to_owned())?;
+        JsFuture::from(clipboard.write(&data.into())).await
+            .map_err(|err| format!("Failed to copy image to clipboard: {:?}", err))?;
 
-            JsFuture::from(clipboard.write(&data.into())).await
-                .map_err(|err| format!("Failed to copy image to clipboard: {:?}", err))?;
-
-            Ok(())
-        } else {
-            Err(format!("copy_to_clipboard: not permitted to copy to clipboard: {:?}", status.state()))
-        }
+        Ok(())
     }
 
     fn handle_copy(&mut self, data: js_sys::Array, id: HandlerId) -> Result<StageRes,String> {
         info!("copy_to_clipboard: creating query for clipboard permissions");
-        let query_obj = Object::new();
-        Reflect::set(&query_obj, &JsValue::from("name"), &JsValue::from("clipboard-write"))
-            .map_err(|err| format!("Failed to write query to object, error: {:?}", err))?;
-
-        // info!("copy_to_clipboard: got query_object: {:?}", query_obj);
-        let query_res = window().ok_or("Window not found".to_owned())?
-            .navigator()
-            .permissions().map_err(|err| format!("Permissions not found, error: {:?}", err))?
-            .query(&query_obj).map_err(|err| format!("Failed to query permissions, error: {:?}", err))?;
         let link_copy = self.link.clone();
         spawn_local(async move {
             link_copy.respond(
                 id,
-                match Self::process_async(query_res, data).await {
+                match Self::process_copy(data).await {
                     Ok(()) => WorkerStatus::Complete,
                     Err(err) => WorkerStatus::Failure(err)
                 }
@@ -224,7 +246,8 @@ impl ClipboardWorker {
     fn process_stage(&mut self, id: HandlerId) {
         let stage = std::mem::replace(&mut self.stage, Stage::Processing);
         match match stage {
-            Stage::Init => self.handle_init(),
+            Stage::Init => self.handle_init(id),
+            Stage::GetData => self.handle_get_data(),
             Stage::Flip(data) => self.handle_flip(data),
             Stage::PngEncode(data) => self.handle_png_encode(data),
             Stage::MakeItems(data) => self.handle_make_items(data),
