@@ -2,7 +2,7 @@ use yew::prelude::*;
 
 use yew_agent::{Dispatcher, Dispatched, Bridge, Bridged};
 
-use web_sys::{HtmlSelectElement, HtmlInputElement};
+use web_sys::{HtmlSelectElement, HtmlInputElement, window};
 
 
 use crate::{agents::{canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus},
@@ -17,6 +17,7 @@ use wasm_bindgen_futures::spawn_local;
 use gloo::timers::future::TimeoutFuture;
 
 
+
 pub struct ControlPanel {
     event_bus: Option<Dispatcher<CommandMsgBus>>,
     clipboard_worker: Option<Box<dyn Bridge<ClipboardWorker>>>,
@@ -25,6 +26,7 @@ pub struct ControlPanel {
     view_stats_cb_ref: NodeRef,
     view_stats_txt_ref: NodeRef,
     _producer: Box<dyn Bridge<CanvasSelectMsgBus>>,
+    no_copy: bool
 }
 
 impl ControlPanel {
@@ -40,6 +42,17 @@ impl Component for ControlPanel {
     type Properties = ControlPanelProps;
 
     fn create(ctx: &Context<Self>) -> Self {
+        let user_agent = window().expect("Window not found")
+            .navigator()
+            .user_agent().expect("User agent failed");
+
+        info!("ControlPane::create: user agent = {}", user_agent);
+        let no_copy = if user_agent.contains("Chrome") {
+            false
+        } else {
+            true
+        };
+
         ControlPanel {
             clipboard_worker: None,
             event_bus: None,
@@ -48,6 +61,7 @@ impl Component for ControlPanel {
             view_stats_cb_ref: NodeRef::default(),
             view_stats_txt_ref: NodeRef::default(),
             _producer: CanvasSelectMsgBus::bridge(ctx.link().callback(Msg::CanvasMsg)),
+            no_copy
         }
     }
 
@@ -217,7 +231,7 @@ impl Component for ControlPanel {
                     {"Edit"}
                 </button>
                 <button class="menu_button" id="copy" onclick={on_copy}
-                        disabled={ self.clipboard_worker.is_some() || !self.paused || ctx.props().edit_mode }>
+                        disabled={ self.no_copy || self.clipboard_worker.is_some() || !self.paused || ctx.props().edit_mode }>
                     {"Copy"}
                 </button>
                 <label class="type_select_label" for="type_select">
