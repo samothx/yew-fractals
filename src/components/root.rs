@@ -7,10 +7,9 @@ use crate::work::complex::Complex;
 use super::{control_panel::ControlPanel, canvas_element::CanvasElement,
             edit_julia_cfg::EditJuliaCfg,
             edit_mandelbrot_cfg::EditMandelbrotCfg,
-            modal::{ModalOk,ModalPlain},
+            modal::{ModalOk,ModalMsg, ModalPlain},
             control_panel::PanelConfig::{ConfigJuliaSet, ConfigMandelbrot}};
 use crate::agents::clipboard_worker::WorkerStatus;
-
 
 pub const JULIA_DEFAULT_X_MAX: (f64, f64) = (1.5, 1.0);
 pub const JULIA_DEFAULT_X_MIN: (f64, f64) = (-1.5, -1.0);
@@ -159,18 +158,18 @@ is best viewed on a computer.".to_owned()
                         <ModalPlain
                             visible={self.show_ctc_preparing}
                             title={"Copy to Clipboard".to_owned()}
-                            message={"Preparing image to be copied to clipboard.".to_owned()}
+                            message={ ModalMsg::String("Preparing image to be copied to clipboard.".to_owned()) }
                         />
                         <ModalOk
                             visible={self.show_ctc_done}
                             title={"Copy to Clipboard".to_owned()}
-                            message={vec![self.ctc_done_msg.clone()]}
+                            message={ ModalMsg::StringList(vec![self.ctc_done_msg.clone()]) }
                             on_ok={ctx.link().callback(|_| Msg::CtcModalOk)}
                         />
                         <ModalOk
                             visible={self.show_disclaimer}
                             title={"Sorry - this page is currently not yet mobile friendly".to_owned()}
-                            message={disclaimer_msg.clone()}
+                            message={ ModalMsg::StringList(disclaimer_msg.clone()) }
                             on_ok={ctx.link().callback(|_| Msg::DisclaimerOk)}
                             background_color={Some("salmon")}
                         />
