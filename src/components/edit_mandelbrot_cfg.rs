@@ -1,12 +1,12 @@
 // use yew::{Component, Context, Html, Callback};
 use yew::prelude::*;
-use web_sys::Element;
+use web_sys::{Element, HtmlDivElement};
 use crate::work::util::{get_u32_from_ref, get_f64_from_ref, set_value_on_input_ref};
 use crate::work::complex::Complex;
 use crate::components::root::{MANDELBROT_DEFAULT_C_MIN, MANDELBROT_DEFAULT_C_MAX, MANDELBROT_DEFAULT_ITERATIONS, MandelbrotCfg};
 use crate::agents::canvas_msg_bus::{CanvasSelectMsgBus, CanvasMsgRequest};
 use yew_agent::{Bridge, Bridged};
-
+use katex::render;
 
 // TODO: Maintain correct aspect ratio
 #[allow(clippy::enum_variant_names)]
@@ -26,6 +26,8 @@ pub struct EditMandelbrotCfg {
     c_min_imag_ref: NodeRef,
     c_max_real_ref: NodeRef,
     c_max_imag_ref: NodeRef,
+    formula_ref: NodeRef,
+    power_ref: NodeRef,
     _producer: Box<dyn Bridge<CanvasSelectMsgBus>>,
 }
 // config: Option<JuliaSetCfg>
@@ -42,6 +44,8 @@ impl Component for EditMandelbrotCfg {
             c_max_imag_ref: NodeRef::default(),
             c_min_real_ref: NodeRef::default(),
             c_min_imag_ref: NodeRef::default(),
+            formula_ref: NodeRef::default(),
+            power_ref: NodeRef::default(),
             _producer: CanvasSelectMsgBus::bridge(ctx.link().callback(Msg::CanvasMsg)),
         }
     }
@@ -97,10 +101,17 @@ impl Component for EditMandelbrotCfg {
                         ctx.props().config.c_min.imag()
                     }, |v| v);
 
+                let power = get_u32_from_ref(&self.power_ref, "mandelbrot_power")
+                    .map_or_else(|err| {
+                        error!("{}",err.as_str());
+                        ctx.props().config.power
+                    }, |v| v);
+
                 ctx.props().cb_saved.emit(MandelbrotCfg {
                     max_iterations,
                     c_max: Complex::new(c_max_real, c_max_imag),
                     c_min: Complex::new(c_min_real, c_min_imag),
+                    power
                 });
                 false
             }
@@ -127,6 +138,13 @@ impl Component for EditMandelbrotCfg {
                 set_value_on_input_ref(&self.c_min_imag_ref,
                                        "x_min_imag",
                                        MANDELBROT_DEFAULT_C_MIN.1.to_string().as_str())
+                    .map_or_else(|err| {
+                        error!("{}",err.as_str());
+                    }, |v| v);
+
+                set_value_on_input_ref(&self.power_ref,
+                                       "power",
+                                       "2")
                     .map_or_else(|err| {
                         error!("{}",err.as_str());
                     }, |v| v);
@@ -213,12 +231,17 @@ impl Component for EditMandelbrotCfg {
         let save_config = ctx.link().callback(|_| Msg::SaveConfig);
         let cancel = ctx.link().callback(|_| Msg::Cancel);
         let cntr_class = if ctx.props().edit_mode { "edit_cntr_visible" } else { "edit_cntr_hidden" };
+
         html![
             <div class={cntr_class} id="mandelbrot_edit_cntr" ref={self.container_ref.clone()}>
                 <div class="input_cntr">
                     <p class="hint_text">
-                        {"Hint: You can select a rectangle in the draw area to import the coordiates into the editor."}
+                        {"Hint: You can select a rectangle in the draw area to import the coordinates into the editor."}
                     </p>
+                </div>
+                <div class="input_cntr">
+                    <p class="formula_label" >{"Iterating over:"}</p>
+                    <div class="formula_cntr" ref={self.formula_ref.clone()}></div>
                 </div>
                 <div class="input_cntr">
                     <div class="input_inner">
@@ -232,6 +255,14 @@ impl Component for EditMandelbrotCfg {
                     <button class="editor_button" id="mandelbrot_reset_params" onclick={reset_params}>
                         {"Reset to Default"}
                     </button>
+                    <div class="input_inner">
+                        <label class="input_label" for="mandelbrot_power">
+                            {"p - Power of x"}
+                        </label>
+                        <input class="input" id="mandelbrot_power" name="mandelbrot_power"
+                            type="number" min="2" max="100" ref={self.power_ref.clone()}
+                            value={ctx.props().config.power.to_string()}/>
+                    </div>
                 </div>
                 <div class="input_cntr">
                     <div class="input_cntr">
@@ -294,7 +325,18 @@ impl Component for EditMandelbrotCfg {
             </div>
         ]
     }
+
+    fn rendered(&mut self, _ctx: &Context<Self>, first_render: bool) {
+        if first_render {
+            let formula = render("\\Large x_{n+1} = x_n^{p}+c")
+                .expect("Katex failed to render formula");
+            self.formula_ref.cast::<HtmlDivElement>()
+                .expect("Formula Div not found").set_inner_html(formula.as_str());
+        }
+    }
+
 }
+
 
 #[derive(Properties, PartialEq, Clone)]
 pub struct EditMandelbrotCfgProps {

@@ -39,6 +39,31 @@ impl Complex {
     pub fn norm(&self) -> f64 {
         f64::sqrt(self.square_length())
     }
+
+    #[inline]
+    fn mul_by(&self, other: &Complex) -> Complex {
+        Self {
+            real: self.real * other.real - self.imag * other.imag,
+            imag: self.real.mul_add(other.imag, self.imag * other.real),
+        }
+    }
+
+    pub fn powi(&self, power: u32) -> Complex {
+        // TODO: remove recursion
+        if power == 1 {
+            self.clone()
+        } else if power & 0x1 == 0x0 {
+            if power == 2 {
+                self.mul_by(&self)
+            } else {
+                let tmp = self.powi(power / 2);
+                tmp.mul_by(&tmp)
+            }
+        } else {
+            let tmp = self.powi(power / 2);
+            tmp.mul_by(&tmp).mul_by(&self)
+        }
+    }
 }
 
 impl Add for Complex {
@@ -81,10 +106,7 @@ impl SubAssign for Complex {
 impl Mul for Complex {
     type Output = Self;
     fn mul(self, other: Self) -> Self::Output {
-        Self {
-            real: self.real * other.real - self.imag * other.imag,
-            imag: self.real.mul_add(other.imag, self.imag * other.real),
-        }
+        self.mul_by(&other)
     }
 }
 
@@ -92,6 +114,25 @@ impl MulAssign for Complex {
     fn mul_assign(&mut self, other: Self) {
         let real = self.real * other.real - self.imag * other.imag;
         let imag = self.real.mul_add(other.imag, self.imag * other.real);
+        self.real = real;
+        self.imag = imag;
+    }
+}
+
+impl Mul<f64> for Complex {
+    type Output = Self;
+    fn mul(self, other: f64) -> Self::Output {
+        Self {
+            real: self.real * other,
+            imag: self.imag * other,
+        }
+    }
+}
+
+impl MulAssign<f64> for Complex {
+    fn mul_assign(&mut self, other: f64) {
+        let real = self.real * other;
+        let imag = self.imag * other;
         self.real = real;
         self.imag = imag;
     }

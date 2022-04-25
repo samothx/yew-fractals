@@ -26,6 +26,11 @@ js-sys = "0.3"
 gloo-file = "0.2.1"
 lazy_static = "1.4.0"
 
+[dependencies.katex]
+version = "0.4"
+default-features = false
+features = ["wasm-js"]
+
 [dependencies.yew]
 version = "0.19"
 
