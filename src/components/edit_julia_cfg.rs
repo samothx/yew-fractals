@@ -1,12 +1,13 @@
 // use yew::{Component, Context, Html, Callback};
 use yew::prelude::*;
 use super::root::{JuliaSetCfg};
-use web_sys::Element;
+use web_sys::{Element, HtmlDivElement};
 use crate::work::util::{get_u32_from_ref, get_f64_from_ref, set_value_on_input_ref};
 use crate::work::complex::Complex;
 use crate::components::root::{JULIA_DEFAULT_X_MAX, JULIA_DEFAULT_X_MIN, JULIA_DEFAULT_ITERATIONS};
 use crate::agents::canvas_msg_bus::{CanvasSelectMsgBus, CanvasMsgRequest};
 use yew_agent::{Bridge, Bridged};
+use katex::render;
 
 // TODO: Maintain correct aspect ratio
 #[allow(clippy::enum_variant_names)]
@@ -28,6 +29,7 @@ pub struct EditJuliaCfg {
     x_min_imag_ref: NodeRef,
     x_max_real_ref: NodeRef,
     x_max_imag_ref: NodeRef,
+    formula_ref: NodeRef,
     _producer: Box<dyn Bridge<CanvasSelectMsgBus>>,
 }
 // config: Option<JuliaSetCfg>
@@ -46,6 +48,7 @@ impl Component for EditJuliaCfg {
             x_max_imag_ref: NodeRef::default(),
             x_min_real_ref: NodeRef::default(),
             x_min_imag_ref: NodeRef::default(),
+            formula_ref: NodeRef::default(),
             _producer: CanvasSelectMsgBus::bridge(ctx.link().callback(Msg::CanvasMsg)),
         }
     }
@@ -151,6 +154,42 @@ impl Component for EditJuliaCfg {
             }
             Msg::ZoomOut => {
                 info!("EditJuliaCfg: got msg ZoomOut");
+                let config = &(ctx.props().config);
+
+                let center = (config.x_max.real() + config.x_min.real()) / 2.0;
+                let x_max_real = config.x_max.real() + config.x_max.real() - center;
+                set_value_on_input_ref(&self.x_max_real_ref,
+                                       "x_max_real",
+                                       x_max_real.to_string().as_str())
+                    .map_or_else(|err| {
+                        error!("{}",err.as_str());
+                    }, |v| v);
+
+                let x_min_real = config.x_min.real() - (center - config.x_min.real());
+                set_value_on_input_ref(&self.x_min_real_ref,
+                                       "x_min_real",
+                                       x_min_real.to_string().as_str())
+                    .map_or_else(|err| {
+                        error!("{}",err.as_str());
+                    }, |v| v);
+
+                let center = (config.x_max.imag() + config.x_min.imag()) / 2.0;
+                let x_max_imag = config.x_max.imag() + config.x_max.imag() - center;
+                set_value_on_input_ref(&self.x_max_imag_ref,
+                                       "x_max_imag",
+                                       x_max_imag.to_string().as_str())
+                    .map_or_else(|err| {
+                        error!("{}",err.as_str());
+                    }, |v| v);
+
+                let x_min_imag = config.x_min.imag() - (center - config.x_min.imag());
+                set_value_on_input_ref(&self.x_min_imag_ref,
+                                       "x_min_imag",
+                                       x_min_imag.to_string().as_str())
+                    .map_or_else(|err| {
+                        error!("{}",err.as_str());
+                    }, |v| v);
+
                 false
             }
             Msg::ResetParams => {
@@ -228,6 +267,10 @@ impl Component for EditJuliaCfg {
                     <p class="hint_text">
                         {"Hint: You can select a rectangle in the draw area to import the coordiates into the editor."}
                     </p>
+                </div>
+                <div class="input_cntr">
+                    <p class="formula_label" >{"Iterating over:"}</p>
+                    <div class="formula_cntr" ref={self.formula_ref.clone()}></div>
                 </div>
                 <div class="input_cntr">
                     <div class="input_inner">
@@ -319,6 +362,16 @@ impl Component for EditJuliaCfg {
             </div>
         ]
     }
+
+    fn rendered(&mut self, _ctx: &Context<Self>, first_render: bool) {
+        if first_render {
+            let formula = render("\\Large x_{n+1} = x_n^2+c")
+                .expect("Katex failed to render formula");
+            self.formula_ref.cast::<HtmlDivElement>()
+                .expect("Formula Div not found").set_inner_html(formula.as_str());
+        }
+    }
+
 }
 
 #[derive(Properties, PartialEq, Clone)]

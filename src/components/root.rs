@@ -21,7 +21,7 @@ pub const MANDELBROT_DEFAULT_C_MAX: (f64, f64) = (0.47, 1.12);
 pub const MANDELBROT_DEFAULT_C_MIN: (f64, f64) = (-2.00, -1.12);
 pub const MANDELBROT_DEFAULT_ITERATIONS: u32 = 400;
 
-const STORAGE_KEY: &str = "yew_fractals_v2.2";
+const STORAGE_KEY: &str = "yew_fractals_v2.4";
 const DEBUG_NO_STORAGE: bool = false;
 
 pub const DEFAULT_WIDTH: u32 = 1024;
@@ -297,6 +297,7 @@ pub struct MandelbrotCfg {
     pub max_iterations: u32,
     pub c_max: Complex,
     pub c_min: Complex,
+    pub power: u32,
 }
 
 impl Default for MandelbrotCfg {
@@ -305,6 +306,7 @@ impl Default for MandelbrotCfg {
             max_iterations: MANDELBROT_DEFAULT_ITERATIONS,
             c_max: Complex::new(MANDELBROT_DEFAULT_C_MAX.0, MANDELBROT_DEFAULT_C_MAX.1),
             c_min: Complex::new(MANDELBROT_DEFAULT_C_MIN.0, MANDELBROT_DEFAULT_C_MIN.1),
+            power: 2,
         }
     }
 }

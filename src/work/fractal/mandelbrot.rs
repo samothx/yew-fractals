@@ -17,6 +17,7 @@ pub struct Mandelbrot {
     height: u32,
     iterations: u32,
     res: Points,
+    power: u32,
     done: bool,
 }
 
@@ -44,6 +45,7 @@ impl Mandelbrot {
             height: canvas_height,
             iterations: config.mandelbrot_cfg.max_iterations,
             res: Points::default(),
+            power: config.mandelbrot_cfg.power,
             done: false,
         }
     }
@@ -54,7 +56,7 @@ impl Mandelbrot {
         // log!(format!("iterate: start: {}", curr));
         let mut last: Option<u32> = None;
         for idx in 1..=self.iterations {
-            x = x * x + *c;
+            x = x.powi(self.power) + *c;
             if x.square_length() >= max {
                 last = Some(idx);
                 break;

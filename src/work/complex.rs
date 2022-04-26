@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, Debug};
 use std::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialEq)]
@@ -39,6 +39,60 @@ impl Complex {
     pub fn norm(&self) -> f64 {
         f64::sqrt(self.square_length())
     }
+
+    #[inline]
+    pub fn mul_by(&self, other: &Complex) -> Complex {
+        Self {
+            real: self.real * other.real - self.imag * other.imag,
+            imag: self.real.mul_add(other.imag, self.imag * other.real),
+        }
+    }
+
+    pub fn powi(&self, power: u32) -> Complex {
+        // a ^ (b + c) = a ^ b * a ^ c
+        match power {
+            0 => Complex { real: 1.0, imag: 0.0 },
+            1 => self.clone(),
+            2 => self.mul_by(self),
+            3 => self.mul_by(self).mul_by(self),
+            _ => {
+                let mut res = Complex{ real: 1.0, imag: 0.0 };
+                let mut curr = self.clone();
+                let mut curr_pow = power;
+                loop {
+                    if curr_pow & 0x1 == 0x1 {
+                       res *= curr;
+                    }
+                    curr_pow >>= 1;
+                    if curr_pow == 0 {
+                        break;
+                    }
+                    curr *= curr;
+                }
+                res
+            }
+        }
+    }
+
+    /*
+    pub fn powi(&self, power: u32) -> Complex {
+        // recursive approach
+        match power {
+            1 => self.clone(),
+            2 => self.mul_by(&self),
+            _ => {
+                let tmp = self.powi(power / 2);
+                if power & 0x1 == 0x0 {
+                    // self ^ (power/2) * self ^ (power/2)
+                    tmp.mul_by(&tmp)
+                } else {
+                    // self ^ (power/2) * self ^ (power/2) * self
+                    tmp.mul_by(&tmp).mul_by(&self)
+                }
+            }
+        }
+    }
+     */
 }
 
 impl Add for Complex {
@@ -81,10 +135,7 @@ impl SubAssign for Complex {
 impl Mul for Complex {
     type Output = Self;
     fn mul(self, other: Self) -> Self::Output {
-        Self {
-            real: self.real * other.real - self.imag * other.imag,
-            imag: self.real.mul_add(other.imag, self.imag * other.real),
-        }
+        self.mul_by(&other)
     }
 }
 
@@ -97,11 +148,36 @@ impl MulAssign for Complex {
     }
 }
 
-impl Display for Complex {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}+{}i)", self.real, self.imag)
+impl Mul<f64> for Complex {
+    type Output = Self;
+    fn mul(self, other: f64) -> Self::Output {
+        Self {
+            real: self.real * other,
+            imag: self.imag * other,
+        }
     }
 }
 
+impl MulAssign<f64> for Complex {
+    fn mul_assign(&mut self, other: f64) {
+        let real = self.real * other;
+        let imag = self.imag * other;
+        self.real = real;
+        self.imag = imag;
+    }
+}
+
+impl Display for Complex {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}+i{})", self.real, self.imag)
+    }
+}
+
+
+impl Debug for Complex {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}+i{})", self.real, self.imag)
+    }
+}
 
 
