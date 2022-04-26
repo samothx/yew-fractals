@@ -16,6 +16,7 @@ pub enum Msg {
     ResetArea,
     SaveConfig,
     Cancel,
+    PowerChanged,
     CanvasMsg(CanvasMsgRequest),
 }
 
@@ -142,16 +143,53 @@ impl Component for EditMandelbrotCfg {
                         error!("{}",err.as_str());
                     }, |v| v);
 
-                set_value_on_input_ref(&self.power_ref,
+/*                set_value_on_input_ref(&self.power_ref,
                                        "power",
                                        "2")
                     .map_or_else(|err| {
                         error!("{}",err.as_str());
                     }, |v| v);
+ */
                 false
             }
             Msg::ZoomOut => {
                 info!("EditMandelbrotCfg: got msg ZoomOut");
+                let config = &(ctx.props().config);
+
+                let center = (config.c_max.real() + config.c_min.real()) / 2.0;
+                let c_max_real = config.c_max.real() + config.c_max.real() - center;
+                set_value_on_input_ref(&self.c_max_real_ref,
+                                       "c_max_real",
+                                       c_max_real.to_string().as_str())
+                    .map_or_else(|err| {
+                        error!("{}",err.as_str());
+                    }, |v| v);
+
+                let c_min_real = config.c_min.real() - (center - config.c_min.real());
+                set_value_on_input_ref(&self.c_min_real_ref,
+                                       "c_min_real",
+                                       c_min_real.to_string().as_str())
+                    .map_or_else(|err| {
+                        error!("{}",err.as_str());
+                    }, |v| v);
+
+                let center = (config.c_max.imag() + config.c_min.imag()) / 2.0;
+                let c_max_imag = config.c_max.imag() + config.c_max.imag() - center;
+                set_value_on_input_ref(&self.c_max_imag_ref,
+                                       "c_max_imag",
+                                       c_max_imag.to_string().as_str())
+                    .map_or_else(|err| {
+                        error!("{}",err.as_str());
+                    }, |v| v);
+
+                let c_min_imag = config.c_min.imag() - (center - config.c_min.imag());
+                set_value_on_input_ref(&self.c_min_imag_ref,
+                                       "c_min_imag",
+                                       c_min_imag.to_string().as_str())
+                    .map_or_else(|err| {
+                        error!("{}",err.as_str());
+                    }, |v| v);
+
                 false
             }
             Msg::ResetParams => {
@@ -221,6 +259,18 @@ impl Component for EditMandelbrotCfg {
                     _ => false
                 }
             }
+            Msg::PowerChanged => {
+                let power = get_u32_from_ref(&self.power_ref, "mandelbrot_power")
+                    .map_or_else(|err| {
+                        error!("{}",err.as_str());
+                        ctx.props().config.power
+                    }, |v| v);
+                let formula = render(format!("\\Large x_{{n+1}} = x_n^{{{}}}+c", power).as_str())
+                    .expect("Katex failed to render formula");
+                self.formula_ref.cast::<HtmlDivElement>()
+                    .expect("Formula Div not found").set_inner_html(formula.as_str());
+                false
+            }
         }
     }
 
@@ -231,7 +281,7 @@ impl Component for EditMandelbrotCfg {
         let save_config = ctx.link().callback(|_| Msg::SaveConfig);
         let cancel = ctx.link().callback(|_| Msg::Cancel);
         let cntr_class = if ctx.props().edit_mode { "edit_cntr_visible" } else { "edit_cntr_hidden" };
-
+        let on_pow_changed = ctx.link().callback(|_| Msg::PowerChanged);
         html![
             <div class={cntr_class} id="mandelbrot_edit_cntr" ref={self.container_ref.clone()}>
                 <div class="input_cntr">
@@ -261,7 +311,9 @@ impl Component for EditMandelbrotCfg {
                         </label>
                         <input class="input" id="mandelbrot_power" name="mandelbrot_power"
                             type="number" min="2" max="100" ref={self.power_ref.clone()}
-                            value={ctx.props().config.power.to_string()}/>
+                            value={ctx.props().config.power.to_string()}
+                            onchange={on_pow_changed}
+                        />
                     </div>
                 </div>
                 <div class="input_cntr">
@@ -326,13 +378,11 @@ impl Component for EditMandelbrotCfg {
         ]
     }
 
-    fn rendered(&mut self, _ctx: &Context<Self>, first_render: bool) {
-        if first_render {
-            let formula = render("\\Large x_{n+1} = x_n^{p}+c")
-                .expect("Katex failed to render formula");
-            self.formula_ref.cast::<HtmlDivElement>()
-                .expect("Formula Div not found").set_inner_html(formula.as_str());
-        }
+    fn rendered(&mut self, ctx: &Context<Self>, _first_render: bool) {
+        let formula = render(format!("\\Large x_{{n+1}} = x_n^{{{}}}+c", ctx.props().config.power).as_str())
+            .expect("Katex failed to render formula");
+        self.formula_ref.cast::<HtmlDivElement>()
+            .expect("Formula Div not found").set_inner_html(formula.as_str());
     }
 
 }

@@ -25,6 +25,7 @@ wasm-logger = "0.2.0"
 js-sys = "0.3"
 gloo-file = "0.2.1"
 lazy_static = "1.4.0"
+wasm-bindgen-test = "0.2"
 
 [dependencies.katex]
 version = "0.4"
@@ -48,4 +49,6 @@ features=[ "Performance", "DomRect", "Element", "ImageData", "Navigator", "Permi
     "PermissionStatus", "PermissionState", "Storage", "HtmlCanvasElement", "CanvasRenderingContext2d",
     "HtmlSelectElement", "HtmlDivElement", "Touch", "TouchEvent", "TouchList", "ClipboardItem", "Screen",
     "MediaQueryList"]
+
+[dev-dependencies]
 
