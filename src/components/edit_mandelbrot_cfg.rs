@@ -6,7 +6,25 @@ use crate::work::complex::Complex;
 use crate::components::root::{MANDELBROT_DEFAULT_C_MIN, MANDELBROT_DEFAULT_C_MAX, MANDELBROT_DEFAULT_ITERATIONS, MandelbrotCfg};
 use crate::agents::canvas_msg_bus::{CanvasSelectMsgBus, CanvasMsgRequest};
 use yew_agent::{Bridge, Bridged};
+
+#[cfg(feature = "use_katex")]
 use katex::render;
+
+#[cfg(feature = "use_katex")]
+const USE_KATEX: bool = true;
+
+#[cfg(not(feature = "use_katex"))]
+const USE_KATEX: bool = false;
+
+#[cfg(feature = "use_katex")]
+fn katex_render(formula: &str) -> String {
+    render(formula).expect(format!("Katex failed to render formula: {}", formula).as_str())
+}
+
+#[cfg(not(feature = "use_katex"))]
+fn katex_render(_str: &str) -> String {
+    return "".to_owned()
+}
 
 // TODO: Maintain correct aspect ratio
 #[allow(clippy::enum_variant_names)]
@@ -260,19 +278,23 @@ impl Component for EditMandelbrotCfg {
                 }
             }
             Msg::PowerChanged => {
-                let power = get_u32_from_ref(&self.power_ref, "mandelbrot_power")
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                        ctx.props().config.power
-                    }, |v| v);
-                let formula = render(format!("\\Large x_{{n+1}} = x_n^{{{}}}+c", power).as_str())
-                    .expect("Katex failed to render formula");
-                self.formula_ref.cast::<HtmlDivElement>()
-                    .expect("Formula Div not found").set_inner_html(formula.as_str());
+                if USE_KATEX {
+                    let power = get_u32_from_ref(&self.power_ref, "mandelbrot_power")
+                        .map_or_else(|err| {
+                            error!("{}",err.as_str());
+                            ctx.props().config.power
+                        }, |v| v);
+
+
+                    let formula = katex_render(format!("\\Large x_{{n+1}} = x_n^{{{}}}+c", power).as_str());
+                    self.formula_ref.cast::<HtmlDivElement>()
+                        .expect("Formula Div not found").set_inner_html(formula.as_str());
+                }
                 false
             }
         }
     }
+
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let reset_area = ctx.link().callback(|_| Msg::ResetArea);
@@ -281,7 +303,11 @@ impl Component for EditMandelbrotCfg {
         let save_config = ctx.link().callback(|_| Msg::SaveConfig);
         let cancel = ctx.link().callback(|_| Msg::Cancel);
         let cntr_class = if ctx.props().edit_mode { "edit_cntr_visible" } else { "edit_cntr_hidden" };
+
         let on_pow_changed = ctx.link().callback(|_| Msg::PowerChanged);
+
+        info!("EditMandelbrotCfg::view: USE_KATEX: {}", USE_KATEX);
+
         html![
             <div class={cntr_class} id="mandelbrot_edit_cntr" ref={self.container_ref.clone()}>
                 <div class="input_cntr">
@@ -289,10 +315,18 @@ impl Component for EditMandelbrotCfg {
                         {"Hint: You can select a rectangle in the draw area to import the coordinates into the editor."}
                     </p>
                 </div>
-                <div class="input_cntr">
-                    <p class="formula_label" >{"Iterating over:"}</p>
-                    <div class="formula_cntr" ref={self.formula_ref.clone()}></div>
-                </div>
+                {
+                    if USE_KATEX {
+                        html![
+                            <div class="input_cntr">
+                                <p class="formula_label" >{"Iterating over:"}</p>
+                                <div class="formula_cntr" ref={self.formula_ref.clone()}></div>
+                            </div>
+                        ]
+                    } else {
+                        html![]
+                    }
+                }
                 <div class="input_cntr">
                     <div class="input_inner">
                         <label class="input_label" for="mandelbrot_iterations">
@@ -378,9 +412,9 @@ impl Component for EditMandelbrotCfg {
         ]
     }
 
+    #[cfg(feature = "use_katex")]
     fn rendered(&mut self, ctx: &Context<Self>, _first_render: bool) {
-        let formula = render(format!("\\Large x_{{n+1}} = x_n^{{{}}}+c", ctx.props().config.power).as_str())
-            .expect("Katex failed to render formula");
+        let formula = katex_render(format!("\\Large x_{{n+1}} = x_n^{{{}}}+c", ctx.props().config.power).as_str());
         self.formula_ref.cast::<HtmlDivElement>()
             .expect("Formula Div not found").set_inner_html(formula.as_str());
     }

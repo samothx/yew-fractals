@@ -205,7 +205,7 @@ impl Canvas {
         let c = (1.0 - f32::abs(2.0 * lightness - 1.0)) * saturation;
         let x = c * (1.0 - ((safe_hue / 60.0) % 2.0 - 1.0).abs());
         let m = lightness - c / 2.0;
-        let (r, g, b) = match hue as u32 {
+        let (r, g, b) = match safe_hue as u32 {
             0..=59 => (c, x, 0.0),
             60..=119 => (x, c, 0.0),
             120..=179 => (0.0, c, x),
@@ -213,7 +213,7 @@ impl Canvas {
             240..=299 => (x, 0.0, c),
             300..=359 => (c, 0.0, x),
             _ => {
-                panic!("invalid hue value");
+                panic!("invalid hue value: {}", hue);
             }
         };
 
@@ -223,7 +223,7 @@ impl Canvas {
             f32::floor((b + m) * 255.0).abs() as u32,
         );
 
-        format!("#{:X}{:X}{:X}", r % 0x100, g % 0x100, b % 0x100)
+        format!("#{:0>2X}{:0>2X}{:0>2X}", r % 0x100, g % 0x100, b % 0x100)
     }
 }
 
@@ -235,6 +235,7 @@ struct QueryObject {
 #[cfg(test)]
 mod test {
     use super::Canvas;
+    use crate::work::canvas::{DEFAULT_SATURATION, DEFAULT_LIGHTNESS};
 
     #[test]
     fn test_iterations_as_hue_to_rgb() {
@@ -246,6 +247,22 @@ mod test {
         assert_eq!(Canvas::hue_to_rgb(300.0), "#FF00FF");
         assert_eq!(Canvas::hue_to_rgb(360.0), "#FF0000");
         assert_eq!(Canvas::hue_to_rgb(340.0), "#FF0055");
+
+        assert_eq!(Canvas::hue_to_rgb(0.0),
+                   Canvas::hsl_to_rgb(0.0, DEFAULT_SATURATION, DEFAULT_LIGHTNESS));
+        assert_eq!(Canvas::hue_to_rgb(60.0),
+                   Canvas::hsl_to_rgb(60.0, DEFAULT_SATURATION, DEFAULT_LIGHTNESS));
+        assert_eq!(Canvas::hue_to_rgb(120.0),
+                   Canvas::hsl_to_rgb(120.0, DEFAULT_SATURATION, DEFAULT_LIGHTNESS));
+        assert_eq!(Canvas::hue_to_rgb(180.0),
+                   Canvas::hsl_to_rgb(180.0, DEFAULT_SATURATION, DEFAULT_LIGHTNESS));
+        assert_eq!(Canvas::hue_to_rgb(240.0),
+                   Canvas::hsl_to_rgb(240.0, DEFAULT_SATURATION, DEFAULT_LIGHTNESS));
+        assert_eq!(Canvas::hue_to_rgb(300.0),
+                   Canvas::hsl_to_rgb(300.0, DEFAULT_SATURATION, DEFAULT_LIGHTNESS));
+        assert_eq!(Canvas::hue_to_rgb(360.0),
+                   Canvas::hsl_to_rgb(360.0, DEFAULT_SATURATION, DEFAULT_LIGHTNESS));
+
         // TODO: Tests for hsl_to_rgb
     }
 }

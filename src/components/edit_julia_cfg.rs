@@ -1,13 +1,25 @@
 // use yew::{Component, Context, Html, Callback};
 use yew::prelude::*;
 use super::root::{JuliaSetCfg};
-use web_sys::{Element, HtmlDivElement};
+use web_sys::Element;
+
 use crate::work::util::{get_u32_from_ref, get_f64_from_ref, set_value_on_input_ref};
 use crate::work::complex::Complex;
 use crate::components::root::{JULIA_DEFAULT_X_MAX, JULIA_DEFAULT_X_MIN, JULIA_DEFAULT_ITERATIONS};
 use crate::agents::canvas_msg_bus::{CanvasSelectMsgBus, CanvasMsgRequest};
 use yew_agent::{Bridge, Bridged};
+
+#[cfg(feature = "use_katex")]
 use katex::render;
+#[cfg(feature = "use_katex")]
+use web_sys::HtmlDivElement;
+
+#[cfg(feature = "use_katex")]
+const USE_KATEX: bool = true;
+
+#[cfg(not(feature = "use_katex"))]
+const USE_KATEX: bool = false;
+
 
 // TODO: Maintain correct aspect ratio
 #[allow(clippy::enum_variant_names)]
@@ -268,10 +280,18 @@ impl Component for EditJuliaCfg {
                         {"Hint: You can select a rectangle in the draw area to import the coordiates into the editor."}
                     </p>
                 </div>
-                <div class="input_cntr">
-                    <p class="formula_label" >{"Iterating over:"}</p>
-                    <div class="formula_cntr" ref={self.formula_ref.clone()}></div>
-                </div>
+                {
+                    if USE_KATEX {
+                        html![
+                            <div class="input_cntr">
+                                <p class="formula_label" >{"Iterating over:"}</p>
+                                <div class="formula_cntr" ref={self.formula_ref.clone()}></div>
+                            </div>
+                        ]
+                    } else {
+                        html![]
+                    }
+                }
                 <div class="input_cntr">
                     <div class="input_inner">
                         <label class="input_label" for="julia_iterations">
@@ -363,6 +383,7 @@ impl Component for EditJuliaCfg {
         ]
     }
 
+    #[cfg(feature = "use_katex")]
     fn rendered(&mut self, _ctx: &Context<Self>, first_render: bool) {
         if first_render {
             let formula = render("\\Large x_{n+1} = x_n^2+c")
