@@ -142,6 +142,7 @@ impl ClipboardWorker {
 
     fn handle_get_data(&mut self) -> Result<StageRes,String> {
         let (canvas,context) = Self::get_canvas_and_context()?;
+        // TODO: write config to picture
         let image_data = context
             .get_image_data(
                 0.0,

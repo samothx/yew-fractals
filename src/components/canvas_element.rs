@@ -11,8 +11,9 @@ use yew_agent::{Bridge, Bridged, Dispatched, Dispatcher};
 
 use crate::{agents::{canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus},
                      command_msg_bus::{CommandMsgBus, CommandRequest as CommandRequest}},
-            components::root::{FractalType, Config},
-            work::{fractal::{Fractal, JuliaSet, Mandelbrot}, canvas::Canvas, stats::Stats}};
+            components::root::Config,
+            work::{fractal::FractalCalculator, canvas::Canvas, stats::Stats}};
+
 
 
 const FPS_RESTRICTED_TIMER: bool = false;
@@ -24,7 +25,7 @@ pub struct CanvasElement {
     canvas: Option<Canvas>,
     _producer: Box<dyn Bridge<CommandMsgBus>>,
     // config: Config,
-    fractal: Option<Box<dyn Fractal>>,
+    calculator: Option<FractalCalculator>,
     stats: Option<Stats>,
     paused: bool,
     on_draw: Callback<()>,
@@ -43,7 +44,7 @@ impl Component for CanvasElement {
             canvas: None,
             _producer: CommandMsgBus::bridge(ctx.link().callback(Msg::Command)),
             // config: ctx.props().config.clone(),
-            fractal: None,
+            calculator: None,
             stats: None,
             paused: true,
             on_draw: ctx.link().callback(|_| Msg::OnDraw),
@@ -196,17 +197,11 @@ impl Component for CanvasElement {
                                     ctx.props().canvas_height as usize));
                         }
 
-                        let mut fractal: Box<dyn Fractal> = match ctx.props().config.active_config {
-                            FractalType::Mandelbrot =>
-                                Box::new(Mandelbrot::new(&ctx.props().config,
-                                                         ctx.props().canvas_width, ctx.props().canvas_height)),
-                            FractalType::JuliaSet =>
-                                Box::new(JuliaSet::new(&ctx.props().config,
-                                                       ctx.props().canvas_width,
-                                                       ctx.props().canvas_height))
-                        };
 
-                        let points = fractal.calculate(self.stats.as_mut());
+                        let mut calculator = FractalCalculator::new(&ctx.props().config,
+                                                                    ctx.props().canvas_width, ctx.props().canvas_height);
+
+                        let points = calculator.calculate(self.stats.as_mut());
                         if let Some(stats) = self.stats.as_ref() {
                             self.event_bus.send(CanvasMsgRequest::FractalProgress(stats.format_stats()));
                         }
@@ -214,7 +209,7 @@ impl Component for CanvasElement {
                             canvas.draw_results(points);
                         }
 
-                        self.fractal = Some(fractal);
+                        self.calculator = Some(calculator);
                         self.paused = false;
                         self.send_draw_ev();
                         false
@@ -237,15 +232,15 @@ impl Component for CanvasElement {
             Msg::OnDraw => {
                 // info!("CanvasElement::update: OnDraw");
                 if !self.paused {
-                    if let Some(fractal) = self.fractal.as_mut() {
-                        let points = fractal.calculate(self.stats.as_mut());
+                    if let Some(calculator) = self.calculator.as_mut() {
+                        let points = calculator.calculate(self.stats.as_mut());
                         if let Some(stats) = self.stats.as_ref() {
                             self.event_bus.send(CanvasMsgRequest::FractalProgress(stats.format_stats()));
                         }
                         if let Some(canvas) = self.canvas.as_ref() {
                             canvas.draw_results(points);
                             // TODO: send stats
-                            if fractal.is_done() {
+                            if calculator.is_done() {
                                 // TODO: send notifications
                                 self.paused = true;
                                 self.event_bus.send(CanvasMsgRequest::FractalPaused);

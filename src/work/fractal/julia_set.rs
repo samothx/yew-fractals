@@ -3,28 +3,18 @@ use crate::components::root::Config;
 use crate::work::{
     util::find_escape_radius,
     complex::Complex,
-    fractal::{Fractal, Points, MAX_DURATION},
-    stats::Stats
+    fractal::Fractal,
 };
 
 
 pub struct JuliaSet {
-    scale_real: f64,
-    scale_imag: f64,
-    offset: Complex,
     c: Complex,
     max: f64,
-    x_curr: u32,
-    width: u32,
-    height: u32,
-    y_curr: u32,
     iterations: u32,
-    res: Points,
-    done: bool,
 }
 
 impl JuliaSet {
-    pub fn new(config: &Config, canvas_width: u32, canvas_height: u32 ) -> Self {
+    pub fn new(config: &Config) -> Self {
         info!(
             "creating fractal with: x_max: {}, x_min: {}, c: {}",
             config.julia_set_cfg.x_max,
@@ -32,48 +22,28 @@ impl JuliaSet {
             config.julia_set_cfg.c
         );
 
-        let scale_real = (config.julia_set_cfg.x_max.real()
-            - config.julia_set_cfg.x_min.real())
-            / f64::from(canvas_width);
-        let scale_imag = (config.julia_set_cfg.x_max.imag()
-            - config.julia_set_cfg.x_min.imag())
-            / f64::from(canvas_height);
         let max = find_escape_radius(config.julia_set_cfg.c.norm());
 
         Self {
-            scale_real,
-            scale_imag,
-            offset: config.julia_set_cfg.x_min,
             c: config.julia_set_cfg.c,
             max: max * max,
-            x_curr: 0,
-            width: canvas_width,
-            y_curr: 0,
-            height: canvas_height,
             iterations: config.julia_set_cfg.max_iterations,
-            res: Points::default(),
-            done: false,
         }
     }
 
-    fn iterate(&self, x: &Complex) -> u32 {
-        let mut curr = *x;
-        // log!(format!("iterate: start: {}", curr));
-        let mut last: Option<u32> = None;
-        for idx in 1..=self.iterations {
-            curr = curr * curr + self.c;
-            if curr.square_length() >= self.max {
-                last = Some(idx);
-                break;
-            }
-        }
-
-        // log!(format!("iterate: end:  {} norm: {} last: {:?}", curr, curr.square_length(), last));
-        last.map_or(self.iterations + 1, |last| last)
-    }
 }
 
 impl Fractal for JuliaSet {
+    fn get_scale(&self, config: &Config, canvas_width: u32, canvas_height: u32) -> Complex {
+        Complex::new( (config.julia_set_cfg.x_max.real()
+            - config.julia_set_cfg.x_min.real())
+            / f64::from(canvas_width),
+        (config.julia_set_cfg.x_max.imag()
+            - config.julia_set_cfg.x_min.imag())
+            / f64::from(canvas_height) )
+    }
+
+    /*
     fn calculate(&mut self, stats: Option<&mut Stats>) -> &Points {
         let performance = web_sys::window()
             .expect("Window not found")
@@ -137,8 +107,24 @@ impl Fractal for JuliaSet {
 
         &self.res
     }
+*/
+    fn get_offset(&self, config: &Config) -> Complex {
+        config.julia_set_cfg.x_min.clone()
+    }
 
-    fn is_done(&self) -> bool {
-        self.done
+    fn iterate(&self, x: &Complex) -> u32 {
+        let mut curr = *x;
+        // log!(format!("iterate: start: {}", curr));
+        let mut last: Option<u32> = None;
+        for idx in 1..=self.iterations {
+            curr = curr * curr + self.c;
+            if curr.square_length() >= self.max {
+                last = Some(idx);
+                break;
+            }
+        }
+
+        // log!(format!("iterate: end:  {} norm: {} last: {:?}", curr, curr.square_length(), last));
+        last.map_or(self.iterations + 1, |last| last)
     }
 }
