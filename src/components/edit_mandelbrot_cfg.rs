@@ -1,10 +1,15 @@
 // use yew::{Component, Context, Html, Callback};
-use yew::prelude::*;
+use crate::agents::canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus};
+use crate::work::{
+    complex::Complex,
+    fractal::{
+        MandelbrotCfg, MANDELBROT_DEFAULT_C_MAX, MANDELBROT_DEFAULT_C_MIN,
+        MANDELBROT_DEFAULT_ITERATIONS,
+    },
+    util::{get_f64_from_ref, get_u32_from_ref, set_value_on_input_ref},
+};
 use web_sys::{Element, HtmlDivElement};
-use crate::work::util::{get_u32_from_ref, get_f64_from_ref, set_value_on_input_ref};
-use crate::work::complex::Complex;
-use crate::components::root::{MANDELBROT_DEFAULT_C_MIN, MANDELBROT_DEFAULT_C_MAX, MANDELBROT_DEFAULT_ITERATIONS, MandelbrotCfg};
-use crate::agents::canvas_msg_bus::{CanvasSelectMsgBus, CanvasMsgRequest};
+use yew::prelude::*;
 use yew_agent::{Bridge, Bridged};
 
 #[cfg(feature = "use_katex")]
@@ -23,7 +28,7 @@ fn katex_render(formula: &str) -> String {
 
 #[cfg(not(feature = "use_katex"))]
 fn katex_render(_str: &str) -> String {
-    return "".to_owned()
+    return "".to_owned();
 }
 
 // TODO: Maintain correct aspect ratio
@@ -90,84 +95,117 @@ impl Component for EditMandelbrotCfg {
                     .set_class_name("edit_cntr_hidden");
 
                 // TODO: add user visible error handlers
-                let max_iterations = get_u32_from_ref(&self.iter_ref, "iterations")
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
+                let max_iterations = get_u32_from_ref(&self.iter_ref, "iterations").map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
                         ctx.props().config.max_iterations
-                    }, |v| v);
+                    },
+                    |v| v,
+                );
 
-                let c_max_real = get_f64_from_ref(&self.c_max_real_ref, "c_max_real")
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
+                let c_max_real = get_f64_from_ref(&self.c_max_real_ref, "c_max_real").map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
                         ctx.props().config.c_max.real()
-                    }, |v| v);
+                    },
+                    |v| v,
+                );
 
-                let c_max_imag = get_f64_from_ref(&self.c_max_imag_ref, "c_max_imag")
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
+                let c_max_imag = get_f64_from_ref(&self.c_max_imag_ref, "c_max_imag").map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
                         ctx.props().config.c_max.imag()
-                    }, |v| v);
+                    },
+                    |v| v,
+                );
 
-                let c_min_real = get_f64_from_ref(&self.c_min_real_ref, "c_min_real")
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
+                let c_min_real = get_f64_from_ref(&self.c_min_real_ref, "c_min_real").map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
                         ctx.props().config.c_min.real()
-                    }, |v| v);
+                    },
+                    |v| v,
+                );
 
-                let c_min_imag = get_f64_from_ref(&self.c_min_imag_ref, "c_min_imag")
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
+                let c_min_imag = get_f64_from_ref(&self.c_min_imag_ref, "c_min_imag").map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
                         ctx.props().config.c_min.imag()
-                    }, |v| v);
+                    },
+                    |v| v,
+                );
 
-                let power = get_u32_from_ref(&self.power_ref, "mandelbrot_power")
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
+                let power = get_u32_from_ref(&self.power_ref, "mandelbrot_power").map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
                         ctx.props().config.power
-                    }, |v| v);
+                    },
+                    |v| v,
+                );
 
                 ctx.props().cb_saved.emit(MandelbrotCfg {
                     max_iterations,
                     c_max: Complex::new(c_max_real, c_max_imag),
                     c_min: Complex::new(c_min_real, c_min_imag),
-                    power
+                    power,
+                    color_cfg_name: None,
                 });
                 false
             }
             Msg::ResetArea => {
                 info!("EditMandelbrotCfg: got msg ResetArea");
-                set_value_on_input_ref(&self.c_max_real_ref,
-                                       "x_max_real",
-                                       MANDELBROT_DEFAULT_C_MAX.0.to_string().as_str())
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                    }, |v| v);
-                set_value_on_input_ref(&self.c_max_imag_ref,
-                                       "x_max_imag",
-                                       MANDELBROT_DEFAULT_C_MAX.1.to_string().as_str())
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                    }, |v| v);
-                set_value_on_input_ref(&self.c_min_real_ref,
-                                       "x_min_real",
-                                       MANDELBROT_DEFAULT_C_MIN.0.to_string().as_str())
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                    }, |v| v);
-                set_value_on_input_ref(&self.c_min_imag_ref,
-                                       "x_min_imag",
-                                       MANDELBROT_DEFAULT_C_MIN.1.to_string().as_str())
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                    }, |v| v);
+                set_value_on_input_ref(
+                    &self.c_max_real_ref,
+                    "x_max_real",
+                    MANDELBROT_DEFAULT_C_MAX.0.to_string().as_str(),
+                )
+                .map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
+                    },
+                    |v| v,
+                );
+                set_value_on_input_ref(
+                    &self.c_max_imag_ref,
+                    "x_max_imag",
+                    MANDELBROT_DEFAULT_C_MAX.1.to_string().as_str(),
+                )
+                .map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
+                    },
+                    |v| v,
+                );
+                set_value_on_input_ref(
+                    &self.c_min_real_ref,
+                    "x_min_real",
+                    MANDELBROT_DEFAULT_C_MIN.0.to_string().as_str(),
+                )
+                .map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
+                    },
+                    |v| v,
+                );
+                set_value_on_input_ref(
+                    &self.c_min_imag_ref,
+                    "x_min_imag",
+                    MANDELBROT_DEFAULT_C_MIN.1.to_string().as_str(),
+                )
+                .map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
+                    },
+                    |v| v,
+                );
 
-/*                set_value_on_input_ref(&self.power_ref,
-                                       "power",
-                                       "2")
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                    }, |v| v);
- */
+                /*                set_value_on_input_ref(&self.power_ref,
+                                                      "power",
+                                                      "2")
+                                   .map_or_else(|err| {
+                                       error!("{}",err.as_str());
+                                   }, |v| v);
+                */
                 false
             }
             Msg::ZoomOut => {
@@ -176,48 +214,73 @@ impl Component for EditMandelbrotCfg {
 
                 let center = (config.c_max.real() + config.c_min.real()) / 2.0;
                 let c_max_real = config.c_max.real() + config.c_max.real() - center;
-                set_value_on_input_ref(&self.c_max_real_ref,
-                                       "c_max_real",
-                                       c_max_real.to_string().as_str())
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                    }, |v| v);
+                set_value_on_input_ref(
+                    &self.c_max_real_ref,
+                    "c_max_real",
+                    c_max_real.to_string().as_str(),
+                )
+                .map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
+                    },
+                    |v| v,
+                );
 
                 let c_min_real = config.c_min.real() - (center - config.c_min.real());
-                set_value_on_input_ref(&self.c_min_real_ref,
-                                       "c_min_real",
-                                       c_min_real.to_string().as_str())
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                    }, |v| v);
+                set_value_on_input_ref(
+                    &self.c_min_real_ref,
+                    "c_min_real",
+                    c_min_real.to_string().as_str(),
+                )
+                .map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
+                    },
+                    |v| v,
+                );
 
                 let center = (config.c_max.imag() + config.c_min.imag()) / 2.0;
                 let c_max_imag = config.c_max.imag() + config.c_max.imag() - center;
-                set_value_on_input_ref(&self.c_max_imag_ref,
-                                       "c_max_imag",
-                                       c_max_imag.to_string().as_str())
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                    }, |v| v);
+                set_value_on_input_ref(
+                    &self.c_max_imag_ref,
+                    "c_max_imag",
+                    c_max_imag.to_string().as_str(),
+                )
+                .map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
+                    },
+                    |v| v,
+                );
 
                 let c_min_imag = config.c_min.imag() - (center - config.c_min.imag());
-                set_value_on_input_ref(&self.c_min_imag_ref,
-                                       "c_min_imag",
-                                       c_min_imag.to_string().as_str())
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                    }, |v| v);
+                set_value_on_input_ref(
+                    &self.c_min_imag_ref,
+                    "c_min_imag",
+                    c_min_imag.to_string().as_str(),
+                )
+                .map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
+                    },
+                    |v| v,
+                );
 
                 false
             }
             Msg::ResetParams => {
                 info!("EditMandelbrotCfg: got msg ResetParams");
-                set_value_on_input_ref(&self.iter_ref,
-                                       "max_iterations",
-                                       MANDELBROT_DEFAULT_ITERATIONS.to_string().as_str())
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                    }, |v| v);
+                set_value_on_input_ref(
+                    &self.iter_ref,
+                    "max_iterations",
+                    MANDELBROT_DEFAULT_ITERATIONS.to_string().as_str(),
+                )
+                .map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
+                    },
+                    |v| v,
+                );
                 false
             }
             Msg::CanvasMsg(canvas_msg) => {
@@ -225,76 +288,101 @@ impl Component for EditMandelbrotCfg {
                     CanvasMsgRequest::CanvasSelectMsg(coords) => {
                         info!("EditMandelbrotCfg: got msg CanvasSelect");
                         if ctx.props().edit_mode {
-                            let x_scale = (ctx.props().config.c_max.real() - ctx.props().config.c_min.real()) /
-                                f64::from(ctx.props().canvas_width);
-                            let y_scale = (ctx.props().config.c_max.imag() - ctx.props().config.c_min.imag()) /
-                                f64::from(ctx.props().canvas_height);
+                            let x_scale = (ctx.props().config.c_max.real()
+                                - ctx.props().config.c_min.real())
+                                / f64::from(ctx.props().canvas_width);
+                            let y_scale = (ctx.props().config.c_max.imag()
+                                - ctx.props().config.c_min.imag())
+                                / f64::from(ctx.props().canvas_height);
                             // info!("EditMandelbrotCfg: CanvasSelectMsg size: {}/{} ",ctx.props().canvas_width,
                             //    ctx.props().canvas_height);
                             // info!("EditMandelbrotCfg: CanvasSelectMsg coords: {:?} ", coords);
                             // info!("EditMandelbrotCfg: CanvasSelectMsg scales: {}/{} ", x_scale, y_scale);
 
-                            let c_min = Complex::new(ctx.props().config.c_min.real() +
-                                                         x_scale * f64::from(coords.0),
-                                                     ctx.props().config.c_min.imag() +
-                                                         y_scale * f64::from(coords.1));
-                            let c_max = Complex::new(ctx.props().config.c_min.real() +
-                                                         x_scale * f64::from(coords.2),
-                                                     ctx.props().config.c_min.imag() +
-                                                         y_scale * f64::from(coords.3));
+                            let c_min = Complex::new(
+                                ctx.props().config.c_min.real() + x_scale * f64::from(coords.0),
+                                ctx.props().config.c_min.imag() + y_scale * f64::from(coords.1),
+                            );
+                            let c_max = Complex::new(
+                                ctx.props().config.c_min.real() + x_scale * f64::from(coords.2),
+                                ctx.props().config.c_min.imag() + y_scale * f64::from(coords.3),
+                            );
 
                             // info!("EditMandelbrotCfg: CanvasSelectMsg new values: c_min: {}, c_max: {} ", c_min, c_max);
 
-                            set_value_on_input_ref(&self.c_max_real_ref,
-                                                   "c_max_real",
-                                                   c_max.real().to_string().as_str())
-                                .map_or_else(|err| {
-                                    error!("{}",err.as_str());
-                                }, |v| v);
-                            set_value_on_input_ref(&self.c_max_imag_ref,
-                                                   "x_max_imag",
-                                                   c_max.imag().to_string().as_str())
-                                .map_or_else(|err| {
-                                    error!("{}",err.as_str());
-                                }, |v| v);
-                            set_value_on_input_ref(&self.c_min_real_ref,
-                                                   "c_min_real",
-                                                   c_min.real().to_string().as_str())
-                                .map_or_else(|err| {
-                                    error!("{}",err.as_str());
-                                }, |v| v);
-                            set_value_on_input_ref(&self.c_min_imag_ref,
-                                                   "c_min_imag",
-                                                   c_min.imag().to_string().as_str())
-                                .map_or_else(|err| {
-                                    error!("{}",err.as_str());
-                                }, |v| v);
+                            set_value_on_input_ref(
+                                &self.c_max_real_ref,
+                                "c_max_real",
+                                c_max.real().to_string().as_str(),
+                            )
+                            .map_or_else(
+                                |err| {
+                                    error!("{}", err.as_str());
+                                },
+                                |v| v,
+                            );
+                            set_value_on_input_ref(
+                                &self.c_max_imag_ref,
+                                "x_max_imag",
+                                c_max.imag().to_string().as_str(),
+                            )
+                            .map_or_else(
+                                |err| {
+                                    error!("{}", err.as_str());
+                                },
+                                |v| v,
+                            );
+                            set_value_on_input_ref(
+                                &self.c_min_real_ref,
+                                "c_min_real",
+                                c_min.real().to_string().as_str(),
+                            )
+                            .map_or_else(
+                                |err| {
+                                    error!("{}", err.as_str());
+                                },
+                                |v| v,
+                            );
+                            set_value_on_input_ref(
+                                &self.c_min_imag_ref,
+                                "c_min_imag",
+                                c_min.imag().to_string().as_str(),
+                            )
+                            .map_or_else(
+                                |err| {
+                                    error!("{}", err.as_str());
+                                },
+                                |v| v,
+                            );
                             false
                         } else {
                             false
                         }
                     }
-                    _ => false
+                    _ => false,
                 }
             }
             Msg::PowerChanged => {
                 if USE_KATEX {
-                    let power = get_u32_from_ref(&self.power_ref, "mandelbrot_power")
-                        .map_or_else(|err| {
-                            error!("{}",err.as_str());
+                    let power = get_u32_from_ref(&self.power_ref, "mandelbrot_power").map_or_else(
+                        |err| {
+                            error!("{}", err.as_str());
                             ctx.props().config.power
-                        }, |v| v);
+                        },
+                        |v| v,
+                    );
 
-
-                    let formula = katex_render(format!("\\Large x_{{n+1}} = x_n^{{{}}}+c", power).as_str());
-                    self.formula_ref.cast::<HtmlDivElement>()
-                        .expect("Formula Div not found").set_inner_html(formula.as_str());
+                    let formula =
+                        katex_render(format!("\\Large x_{{n+1}} = x_n^{{{}}}+c", power).as_str());
+                    self.formula_ref
+                        .cast::<HtmlDivElement>()
+                        .expect("Formula Div not found")
+                        .set_inner_html(formula.as_str());
                 }
                 false
             }
         }
     }
-
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let reset_area = ctx.link().callback(|_| Msg::ResetArea);
@@ -302,7 +390,11 @@ impl Component for EditMandelbrotCfg {
         let zoom_out = ctx.link().callback(|_| Msg::ZoomOut);
         let save_config = ctx.link().callback(|_| Msg::SaveConfig);
         let cancel = ctx.link().callback(|_| Msg::Cancel);
-        let cntr_class = if ctx.props().edit_mode { "edit_cntr_visible" } else { "edit_cntr_hidden" };
+        let cntr_class = if ctx.props().edit_mode {
+            "edit_cntr_visible"
+        } else {
+            "edit_cntr_hidden"
+        };
 
         let on_pow_changed = ctx.link().callback(|_| Msg::PowerChanged);
 
@@ -414,13 +506,15 @@ impl Component for EditMandelbrotCfg {
 
     #[cfg(feature = "use_katex")]
     fn rendered(&mut self, ctx: &Context<Self>, _first_render: bool) {
-        let formula = katex_render(format!("\\Large x_{{n+1}} = x_n^{{{}}}+c", ctx.props().config.power).as_str());
-        self.formula_ref.cast::<HtmlDivElement>()
-            .expect("Formula Div not found").set_inner_html(formula.as_str());
+        let formula = katex_render(
+            format!("\\Large x_{{n+1}} = x_n^{{{}}}+c", ctx.props().config.power).as_str(),
+        );
+        self.formula_ref
+            .cast::<HtmlDivElement>()
+            .expect("Formula Div not found")
+            .set_inner_html(formula.as_str());
     }
-
 }
-
 
 #[derive(Properties, PartialEq, Clone)]
 pub struct EditMandelbrotCfgProps {

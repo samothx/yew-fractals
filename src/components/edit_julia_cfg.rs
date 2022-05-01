@@ -1,14 +1,16 @@
 // use yew::{Component, Context, Html, Callback};
-use yew::prelude::*;
-use super::root::{JuliaSetCfg};
 use web_sys::Element;
+use yew::prelude::*;
 
-use crate::work::util::{get_u32_from_ref, get_f64_from_ref, set_value_on_input_ref};
-use crate::work::complex::Complex;
-use crate::components::root::{JULIA_DEFAULT_X_MAX, JULIA_DEFAULT_X_MIN, JULIA_DEFAULT_ITERATIONS};
-use crate::agents::canvas_msg_bus::{CanvasSelectMsgBus, CanvasMsgRequest};
+use crate::agents::canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus};
+use crate::work::{
+    complex::Complex,
+    fractal::{JULIA_DEFAULT_ITERATIONS, JULIA_DEFAULT_X_MAX, JULIA_DEFAULT_X_MIN},
+    util::{get_f64_from_ref, get_u32_from_ref, set_value_on_input_ref},
+};
 use yew_agent::{Bridge, Bridged};
 
+use crate::work::fractal::JuliaSetCfg;
 #[cfg(feature = "use_katex")]
 use katex::render;
 #[cfg(feature = "use_katex")]
@@ -19,7 +21,6 @@ const USE_KATEX: bool = true;
 
 #[cfg(not(feature = "use_katex"))]
 const USE_KATEX: bool = false;
-
 
 // TODO: Maintain correct aspect ratio
 #[allow(clippy::enum_variant_names)]
@@ -86,82 +87,117 @@ impl Component for EditJuliaCfg {
                     .set_class_name("edit_cntr_hidden");
 
                 // TODO: add user visible error handlers
-                let max_iterations = get_u32_from_ref(&self.iter_ref, "iterations")
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
+                let max_iterations = get_u32_from_ref(&self.iter_ref, "iterations").map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
                         ctx.props().config.max_iterations
-                    }, |v| v);
+                    },
+                    |v| v,
+                );
 
-                let c_real = get_f64_from_ref(&self.c_real_ref, "c_real")
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
+                let c_real = get_f64_from_ref(&self.c_real_ref, "c_real").map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
                         ctx.props().config.c.real()
-                    }, |v| v);
+                    },
+                    |v| v,
+                );
 
-                let c_imag = get_f64_from_ref(&self.c_imag_ref, "c_imag")
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
+                let c_imag = get_f64_from_ref(&self.c_imag_ref, "c_imag").map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
                         ctx.props().config.c.imag()
-                    }, |v| v);
+                    },
+                    |v| v,
+                );
 
-                let x_max_real = get_f64_from_ref(&self.x_max_real_ref, "x_max_real")
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
+                let x_max_real = get_f64_from_ref(&self.x_max_real_ref, "x_max_real").map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
                         ctx.props().config.x_max.real()
-                    }, |v| v);
+                    },
+                    |v| v,
+                );
 
-                let x_max_imag = get_f64_from_ref(&self.x_max_imag_ref, "x_max_imag")
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
+                let x_max_imag = get_f64_from_ref(&self.x_max_imag_ref, "x_max_imag").map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
                         ctx.props().config.x_max.imag()
-                    }, |v| v);
+                    },
+                    |v| v,
+                );
 
-                let x_min_real = get_f64_from_ref(&self.x_min_real_ref, "x_min_real")
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
+                let x_min_real = get_f64_from_ref(&self.x_min_real_ref, "x_min_real").map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
                         ctx.props().config.x_min.real()
-                    }, |v| v);
+                    },
+                    |v| v,
+                );
 
-                let x_min_imag = get_f64_from_ref(&self.x_min_imag_ref, "x_min_imag")
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
+                let x_min_imag = get_f64_from_ref(&self.x_min_imag_ref, "x_min_imag").map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
                         ctx.props().config.x_min.imag()
-                    }, |v| v);
+                    },
+                    |v| v,
+                );
 
                 ctx.props().cb_saved.emit(JuliaSetCfg {
                     max_iterations,
                     c: Complex::new(c_real, c_imag),
                     x_max: Complex::new(x_max_real, x_max_imag),
                     x_min: Complex::new(x_min_real, x_min_imag),
+                    color_cfg_name: None,
                 });
                 false
             }
             Msg::ResetArea => {
                 info!("EditJuliaCfg: got msg ResetArea");
-                set_value_on_input_ref(&self.x_max_real_ref,
-                                       "x_max_real",
-                                       JULIA_DEFAULT_X_MAX.0.to_string().as_str())
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                    }, |v| v);
-                set_value_on_input_ref(&self.x_max_imag_ref,
-                                       "x_max_imag",
-                                       JULIA_DEFAULT_X_MAX.1.to_string().as_str())
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                    }, |v| v);
-                set_value_on_input_ref(&self.x_min_real_ref,
-                                       "x_min_real",
-                                       JULIA_DEFAULT_X_MIN.0.to_string().as_str())
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                    }, |v| v);
-                set_value_on_input_ref(&self.x_min_imag_ref,
-                                       "x_min_imag",
-                                       JULIA_DEFAULT_X_MIN.1.to_string().as_str())
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                    }, |v| v);
+                set_value_on_input_ref(
+                    &self.x_max_real_ref,
+                    "x_max_real",
+                    JULIA_DEFAULT_X_MAX.0.to_string().as_str(),
+                )
+                .map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
+                    },
+                    |v| v,
+                );
+                set_value_on_input_ref(
+                    &self.x_max_imag_ref,
+                    "x_max_imag",
+                    JULIA_DEFAULT_X_MAX.1.to_string().as_str(),
+                )
+                .map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
+                    },
+                    |v| v,
+                );
+                set_value_on_input_ref(
+                    &self.x_min_real_ref,
+                    "x_min_real",
+                    JULIA_DEFAULT_X_MIN.0.to_string().as_str(),
+                )
+                .map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
+                    },
+                    |v| v,
+                );
+                set_value_on_input_ref(
+                    &self.x_min_imag_ref,
+                    "x_min_imag",
+                    JULIA_DEFAULT_X_MIN.1.to_string().as_str(),
+                )
+                .map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
+                    },
+                    |v| v,
+                );
                 false
             }
             Msg::ZoomOut => {
@@ -170,48 +206,73 @@ impl Component for EditJuliaCfg {
 
                 let center = (config.x_max.real() + config.x_min.real()) / 2.0;
                 let x_max_real = config.x_max.real() + config.x_max.real() - center;
-                set_value_on_input_ref(&self.x_max_real_ref,
-                                       "x_max_real",
-                                       x_max_real.to_string().as_str())
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                    }, |v| v);
+                set_value_on_input_ref(
+                    &self.x_max_real_ref,
+                    "x_max_real",
+                    x_max_real.to_string().as_str(),
+                )
+                .map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
+                    },
+                    |v| v,
+                );
 
                 let x_min_real = config.x_min.real() - (center - config.x_min.real());
-                set_value_on_input_ref(&self.x_min_real_ref,
-                                       "x_min_real",
-                                       x_min_real.to_string().as_str())
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                    }, |v| v);
+                set_value_on_input_ref(
+                    &self.x_min_real_ref,
+                    "x_min_real",
+                    x_min_real.to_string().as_str(),
+                )
+                .map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
+                    },
+                    |v| v,
+                );
 
                 let center = (config.x_max.imag() + config.x_min.imag()) / 2.0;
                 let x_max_imag = config.x_max.imag() + config.x_max.imag() - center;
-                set_value_on_input_ref(&self.x_max_imag_ref,
-                                       "x_max_imag",
-                                       x_max_imag.to_string().as_str())
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                    }, |v| v);
+                set_value_on_input_ref(
+                    &self.x_max_imag_ref,
+                    "x_max_imag",
+                    x_max_imag.to_string().as_str(),
+                )
+                .map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
+                    },
+                    |v| v,
+                );
 
                 let x_min_imag = config.x_min.imag() - (center - config.x_min.imag());
-                set_value_on_input_ref(&self.x_min_imag_ref,
-                                       "x_min_imag",
-                                       x_min_imag.to_string().as_str())
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                    }, |v| v);
+                set_value_on_input_ref(
+                    &self.x_min_imag_ref,
+                    "x_min_imag",
+                    x_min_imag.to_string().as_str(),
+                )
+                .map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
+                    },
+                    |v| v,
+                );
 
                 false
             }
             Msg::ResetParams => {
                 info!("EditJuliaCfg: got msg ResetParams");
-                set_value_on_input_ref(&self.iter_ref,
-                                       "max_iterations",
-                                       JULIA_DEFAULT_ITERATIONS.to_string().as_str())
-                    .map_or_else(|err| {
-                        error!("{}",err.as_str());
-                    }, |v| v);
+                set_value_on_input_ref(
+                    &self.iter_ref,
+                    "max_iterations",
+                    JULIA_DEFAULT_ITERATIONS.to_string().as_str(),
+                )
+                .map_or_else(
+                    |err| {
+                        error!("{}", err.as_str());
+                    },
+                    |v| v,
+                );
                 false
             }
             Msg::CanvasMsg(canvas_msg) => {
@@ -220,46 +281,72 @@ impl Component for EditJuliaCfg {
                     CanvasMsgRequest::CanvasSelectMsg(coords) => {
                         if ctx.props().edit_mode {
                             // TODO: implement
-                            let x_scale = (ctx.props().config.x_max.real() - ctx.props().config.x_min.real()) /
-                                f64::from(ctx.props().canvas_width);
-                            let y_scale = (ctx.props().config.x_max.imag() - ctx.props().config.x_min.imag()) /
-                                f64::from(ctx.props().canvas_height);
+                            let x_scale = (ctx.props().config.x_max.real()
+                                - ctx.props().config.x_min.real())
+                                / f64::from(ctx.props().canvas_width);
+                            let y_scale = (ctx.props().config.x_max.imag()
+                                - ctx.props().config.x_min.imag())
+                                / f64::from(ctx.props().canvas_height);
 
-                            let x_min = ctx.props().config.x_min.real() + x_scale * f64::from(coords.0);
-                            let y_min = ctx.props().config.x_min.imag() + y_scale * f64::from(coords.1);
-                            let x_max = ctx.props().config.x_min.real() + x_scale * f64::from(coords.2);
-                            let y_max = ctx.props().config.x_min.imag() + y_scale * f64::from(coords.3);
+                            let x_min =
+                                ctx.props().config.x_min.real() + x_scale * f64::from(coords.0);
+                            let y_min =
+                                ctx.props().config.x_min.imag() + y_scale * f64::from(coords.1);
+                            let x_max =
+                                ctx.props().config.x_min.real() + x_scale * f64::from(coords.2);
+                            let y_max =
+                                ctx.props().config.x_min.imag() + y_scale * f64::from(coords.3);
 
-                            set_value_on_input_ref(&self.x_max_real_ref,
-                                                   "x_max_real",
-                                                   x_max.to_string().as_str())
-                                .map_or_else(|err| {
-                                    error!("{}",err.as_str());
-                                }, |v| v);
-                            set_value_on_input_ref(&self.x_max_imag_ref,
-                                                   "x_max_imag",
-                                                   y_max.to_string().as_str())
-                                .map_or_else(|err| {
-                                    error!("{}",err.as_str());
-                                }, |v| v);
-                            set_value_on_input_ref(&self.x_min_real_ref,
-                                                   "x_min_real",
-                                                   x_min.to_string().as_str())
-                                .map_or_else(|err| {
-                                    error!("{}",err.as_str());
-                                }, |v| v);
-                            set_value_on_input_ref(&self.x_min_imag_ref,
-                                                   "x_min_imag",
-                                                   y_min.to_string().as_str())
-                                .map_or_else(|err| {
-                                    error!("{}",err.as_str());
-                                }, |v| v);
+                            set_value_on_input_ref(
+                                &self.x_max_real_ref,
+                                "x_max_real",
+                                x_max.to_string().as_str(),
+                            )
+                            .map_or_else(
+                                |err| {
+                                    error!("{}", err.as_str());
+                                },
+                                |v| v,
+                            );
+                            set_value_on_input_ref(
+                                &self.x_max_imag_ref,
+                                "x_max_imag",
+                                y_max.to_string().as_str(),
+                            )
+                            .map_or_else(
+                                |err| {
+                                    error!("{}", err.as_str());
+                                },
+                                |v| v,
+                            );
+                            set_value_on_input_ref(
+                                &self.x_min_real_ref,
+                                "x_min_real",
+                                x_min.to_string().as_str(),
+                            )
+                            .map_or_else(
+                                |err| {
+                                    error!("{}", err.as_str());
+                                },
+                                |v| v,
+                            );
+                            set_value_on_input_ref(
+                                &self.x_min_imag_ref,
+                                "x_min_imag",
+                                y_min.to_string().as_str(),
+                            )
+                            .map_or_else(
+                                |err| {
+                                    error!("{}", err.as_str());
+                                },
+                                |v| v,
+                            );
                             false
                         } else {
                             false
                         }
                     }
-                    _ => false
+                    _ => false,
                 }
             }
         }
@@ -271,7 +358,11 @@ impl Component for EditJuliaCfg {
         let zoom_out = ctx.link().callback(|_| Msg::ZoomOut);
         let save_config = ctx.link().callback(|_| Msg::SaveConfig);
         let cancel = ctx.link().callback(|_| Msg::Cancel);
-        let cntr_class = if ctx.props().edit_mode { "edit_cntr_visible" } else { "edit_cntr_hidden" };
+        let cntr_class = if ctx.props().edit_mode {
+            "edit_cntr_visible"
+        } else {
+            "edit_cntr_hidden"
+        };
 
         html![
             <div class={cntr_class} id="julia_edit_cntr" ref={self.container_ref.clone()}>
@@ -386,13 +477,14 @@ impl Component for EditJuliaCfg {
     #[cfg(feature = "use_katex")]
     fn rendered(&mut self, _ctx: &Context<Self>, first_render: bool) {
         if first_render {
-            let formula = render("\\Large x_{n+1} = x_n^2+c")
-                .expect("Katex failed to render formula");
-            self.formula_ref.cast::<HtmlDivElement>()
-                .expect("Formula Div not found").set_inner_html(formula.as_str());
+            let formula =
+                render("\\Large x_{n+1} = x_n^2+c").expect("Katex failed to render formula");
+            self.formula_ref
+                .cast::<HtmlDivElement>()
+                .expect("Formula Div not found")
+                .set_inner_html(formula.as_str());
         }
     }
-
 }
 
 #[derive(Properties, PartialEq, Clone)]

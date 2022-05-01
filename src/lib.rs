@@ -3,10 +3,9 @@ extern crate log;
 
 use wasm_bindgen::prelude::*;
 
-mod components;
 mod agents;
+mod components;
 mod work;
-
 
 use components::root::Root;
 // mod model;
@@ -18,4 +17,3 @@ pub fn start() {
     info!("starting up");
     yew::start_app::<Root>();
 }
-

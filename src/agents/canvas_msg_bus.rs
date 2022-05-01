@@ -46,6 +46,5 @@ pub enum CanvasMsgRequest {
     FractalStarted,
     FractalProgress(String),
     FractalPaused,
-    CanvasSelectMsg((u32,u32,u32,u32)),
+    CanvasSelectMsg((u32, u32, u32, u32)),
 }
-

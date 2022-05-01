@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use yew_agent::{Agent, AgentLink, Context, HandlerId};
 
-
 /// CommandMsgBus
 /// Transmits messages from the control panel component to the canvas component
 
@@ -47,4 +46,3 @@ pub enum CommandRequest {
     Stop,
     Clear,
 }
-

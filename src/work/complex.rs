@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter, Debug};
+use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialEq)]
@@ -51,17 +51,23 @@ impl Complex {
     pub fn powi(&self, power: u32) -> Complex {
         // a ^ (b + c) = a ^ b * a ^ c
         match power {
-            0 => Complex { real: 1.0, imag: 0.0 },
+            0 => Complex {
+                real: 1.0,
+                imag: 0.0,
+            },
             1 => self.clone(),
             2 => self.mul_by(self),
             3 => self.mul_by(self).mul_by(self),
             _ => {
-                let mut res = Complex{ real: 1.0, imag: 0.0 };
+                let mut res = Complex {
+                    real: 1.0,
+                    imag: 0.0,
+                };
                 let mut curr = self.clone();
                 let mut curr_pow = power;
                 loop {
                     if curr_pow & 0x1 == 0x1 {
-                       res *= curr;
+                        res *= curr;
                     }
                     curr_pow >>= 1;
                     if curr_pow == 0 {
@@ -131,7 +137,6 @@ impl SubAssign for Complex {
     }
 }
 
-
 impl Mul for Complex {
     type Output = Self;
     fn mul(self, other: Self) -> Self::Output {
@@ -173,13 +178,11 @@ impl Display for Complex {
     }
 }
 
-
 impl Debug for Complex {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "({}+i{})", self.real, self.imag)
     }
 }
-
 
 #[cfg(test)]
 pub mod test {
@@ -189,7 +192,7 @@ pub mod test {
     fn test_powi() {
         let c = Complex::new(2.0, 2.0);
         let res = c.powi(0);
-        assert_eq!(res, Complex::new(1.0,0.0));
+        assert_eq!(res, Complex::new(1.0, 0.0));
         let res = c.powi(1);
         assert_eq!(res, c);
         let res = c.powi(2);
@@ -202,4 +205,3 @@ pub mod test {
         assert_eq!(res, c.mul_by(&c).mul_by(&c).mul_by(&c).mul_by(&c));
     }
 }
-

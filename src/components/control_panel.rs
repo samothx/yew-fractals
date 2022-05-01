@@ -1,22 +1,22 @@
 use yew::prelude::*;
 
-use yew_agent::{Dispatcher, Dispatched, Bridge, Bridged};
+use yew_agent::{Bridge, Bridged, Dispatched, Dispatcher};
 
-use web_sys::{HtmlSelectElement, HtmlInputElement, window};
+use web_sys::{window, HtmlInputElement, HtmlSelectElement};
 
-
-use crate::{agents::{canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus},
-                     command_msg_bus::{CommandMsgBus, CommandRequest},
-                     clipboard_worker::{WorkerStatus,ClipboardWorker},
-                    },
-            work::util::set_value_on_txt_area_ref,
-            components::root::{JuliaSetCfg, MandelbrotCfg, FractalType},
-
+use crate::{
+    agents::{
+        canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus},
+        clipboard_worker::{ClipboardWorker, WorkerStatus},
+        command_msg_bus::{CommandMsgBus, CommandRequest},
+    },
+    work::{
+        fractal::{FractalType, JuliaSetCfg, MandelbrotCfg},
+        util::set_value_on_txt_area_ref,
+    },
 };
-use wasm_bindgen_futures::spawn_local;
 use gloo::timers::future::TimeoutFuture;
-
-
+use wasm_bindgen_futures::spawn_local;
 
 pub struct ControlPanel {
     event_bus: Option<Dispatcher<CommandMsgBus>>,
@@ -26,7 +26,7 @@ pub struct ControlPanel {
     view_stats_cb_ref: NodeRef,
     view_stats_txt_ref: NodeRef,
     _producer: Box<dyn Bridge<CanvasSelectMsgBus>>,
-    no_copy: bool
+    no_copy: bool,
 }
 
 impl ControlPanel {
@@ -42,9 +42,11 @@ impl Component for ControlPanel {
     type Properties = ControlPanelProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        let user_agent = window().expect("Window not found")
+        let user_agent = window()
+            .expect("Window not found")
             .navigator()
-            .user_agent().expect("User agent failed");
+            .user_agent()
+            .expect("User agent failed");
 
         info!("ControlPane::create: user agent = {}", user_agent);
         let no_copy = if user_agent.contains("Chrome") {
@@ -61,7 +63,7 @@ impl Component for ControlPanel {
             view_stats_cb_ref: NodeRef::default(),
             view_stats_txt_ref: NodeRef::default(),
             _producer: CanvasSelectMsgBus::bridge(ctx.link().callback(Msg::CanvasMsg)),
-            no_copy
+            no_copy,
         }
     }
 
@@ -70,7 +72,9 @@ impl Component for ControlPanel {
             Msg::Start => {
                 info!("ControlPanel::Start");
                 if self.paused && !ctx.props().edit_mode {
-                    self.event_bus.as_mut().expect("Eventbus not initialized")
+                    self.event_bus
+                        .as_mut()
+                        .expect("Eventbus not initialized")
                         .send(CommandRequest::Start);
                 }
                 true
@@ -78,7 +82,9 @@ impl Component for ControlPanel {
             Msg::Stop => {
                 info!("ControlPanel::Stop");
                 if !self.paused {
-                    self.event_bus.as_mut().expect("Eventbus not initialized")
+                    self.event_bus
+                        .as_mut()
+                        .expect("Eventbus not initialized")
                         .send(CommandRequest::Stop);
                 }
                 true
@@ -87,10 +93,14 @@ impl Component for ControlPanel {
                 info!("ControlPanel::Clear");
                 if !self.paused {
                     self.paused = true;
-                    self.event_bus.as_mut().expect("Eventbus not initialized")
+                    self.event_bus
+                        .as_mut()
+                        .expect("Eventbus not initialized")
                         .send(CommandRequest::Stop);
                 }
-                self.event_bus.as_mut().expect("Eventbus not initialized")
+                self.event_bus
+                    .as_mut()
+                    .expect("Eventbus not initialized")
                     .send(CommandRequest::Clear);
                 true
             }
@@ -107,7 +117,7 @@ impl Component for ControlPanel {
                     error!("copy to clipboard is busy")
                 } else {
                     self.clipboard_worker = Some(ClipboardWorker::bridge(
-                        ctx.link().callback(|r| Msg::ClipboardRes(r))
+                        ctx.link().callback(|r| Msg::ClipboardRes(r)),
                     ));
                     ctx.props().on_ctc_active.emit(true);
                     // actual clipboard copy job starts with a delay (on CopyStart) to allow
@@ -138,17 +148,27 @@ impl Component for ControlPanel {
                         if let Some(worker_bridge) = self.clipboard_worker.as_mut() {
                             worker_bridge.send(());
                         } else {
-                            ctx.props().on_ctc_done.emit(WorkerStatus::Failure("Worker not initialized".to_owned()));
+                            ctx.props()
+                                .on_ctc_done
+                                .emit(WorkerStatus::Failure("Worker not initialized".to_owned()));
                         }
                     }
                 }
                 false
             }
+            Msg::EditColors => {
+                info!("ControlPanel::EditColors");
+                false
+            }
             Msg::TypeChanged => {
                 info!("ControlPanel::TypeChanged");
-                let fractal_type = match self.type_sel_ref.cast::<HtmlSelectElement>()
+                let fractal_type = match self
+                    .type_sel_ref
+                    .cast::<HtmlSelectElement>()
                     .expect("Type select not found")
-                    .value().as_str() {
+                    .value()
+                    .as_str()
+                {
                     "type_mandelbrot" => Some(FractalType::Mandelbrot),
                     "type_julia_set" => Some(FractalType::JuliaSet),
                     val => {
@@ -158,14 +178,19 @@ impl Component for ControlPanel {
                 };
 
                 if let Some(fractal_type) = fractal_type {
-                    self.event_bus.as_mut().expect("Eventbus not initialized").send(CommandRequest::Clear);
+                    self.event_bus
+                        .as_mut()
+                        .expect("Eventbus not initialized")
+                        .send(CommandRequest::Clear);
                     ctx.props().on_type_changed.emit(fractal_type)
                 }
                 true
-            },
+            }
             Msg::ViewStatsChanged => {
                 info!("ControlPanel::ViewStatsChanged");
-                let checked = self.view_stats_cb_ref.cast::<HtmlInputElement>()
+                let checked = self
+                    .view_stats_cb_ref
+                    .cast::<HtmlInputElement>()
                     .expect("Type select not found")
                     .checked();
                 ctx.props().on_view_stats_changed.emit(checked);
@@ -183,15 +208,20 @@ impl Component for ControlPanel {
                         true
                     }
                     CanvasMsgRequest::FractalProgress(msg) => {
-                        set_value_on_txt_area_ref(&self.view_stats_txt_ref,
-                                               "stats_txt",
-                                               msg.as_str())
-                            .map_or_else(|err| {
-                                error!("{}",err.as_str());
-                            }, |v| v);
+                        set_value_on_txt_area_ref(
+                            &self.view_stats_txt_ref,
+                            "stats_txt",
+                            msg.as_str(),
+                        )
+                        .map_or_else(
+                            |err| {
+                                error!("{}", err.as_str());
+                            },
+                            |v| v,
+                        );
                         false
                     }
-                    _ => false
+                    _ => false,
                 }
             }
         }
@@ -209,6 +239,7 @@ impl Component for ControlPanel {
         let on_edit = ctx.link().callback(|_| Msg::Edit);
         let on_clear = ctx.link().callback(|_| Msg::Clear);
         let on_copy = ctx.link().callback(|_| Msg::Copy);
+        let on_edit_colors = ctx.link().callback(|_| Msg::EditColors);
         let on_type_changed = ctx.link().callback(|_| Msg::TypeChanged);
         let on_view_stats_changed = ctx.link().callback(|_| Msg::ViewStatsChanged);
 
@@ -231,8 +262,12 @@ impl Component for ControlPanel {
                     {"Edit"}
                 </button>
                 <button class="menu_button" id="copy" onclick={on_copy}
-                        disabled={ self.no_copy || self.clipboard_worker.is_some() || !self.paused || ctx.props().edit_mode }>
+                        disabled={ self.no_copy || !self.paused || ctx.props().edit_mode }>
                     {"Copy"}
+                </button>
+                <button class="menu_button" id="colors" onclick={on_edit_colors}
+                        disabled={ !self.paused || ctx.props().edit_mode }>
+                    {"Colors"}
                 </button>
                 <label class="type_select_label" for="type_select">
                     {"Select Type"}
@@ -279,10 +314,11 @@ pub enum Msg {
     Edit,
     Copy,
     CopyStart,
+    EditColors,
     TypeChanged,
     ViewStatsChanged,
     CanvasMsg(CanvasMsgRequest),
-    ClipboardRes(WorkerStatus)
+    ClipboardRes(WorkerStatus),
 }
 
 #[derive(Properties, PartialEq, Clone)]
@@ -302,4 +338,3 @@ pub enum PanelConfig {
     ConfigJuliaSet(JuliaSetCfg),
     ConfigMandelbrot(MandelbrotCfg),
 }
-

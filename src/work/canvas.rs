@@ -1,33 +1,46 @@
-use js_sys::{Object};
-use web_sys::{ImageData, HtmlCanvasElement, CanvasRenderingContext2d};
-use crate::components::root::{Config, FractalType};
-use serde::{Serialize, Deserialize};
-use super::{fractal::Points};
-use wasm_bindgen::{JsValue, JsCast};
-
-const BACKGROUND_COLOR: &str = "#000000";
-
-const DEFAULT_SATURATION: f32 = 1.0;
-const DEFAULT_LIGHTNESS: f32 = 0.5;
-
-const HUE_OFFSET: f32 = 0.0;
-const HUE_RANGE: f32 = 300.0;
+use super::fractal::Points;
+use crate::components::root::Config;
+use crate::work::colors::{ColorRange, BACKGROUND_COLOR};
+use crate::work::fractal::FractalType;
+use js_sys::Object;
+use wasm_bindgen::{JsCast, JsValue};
+use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData};
 
 pub struct Canvas {
     canvas: HtmlCanvasElement,
-    steps: u32,
+    iterations: u32,
     width: u32,
+    color_range: ColorRange,
 }
 
 impl Canvas {
     pub fn new(canvas: HtmlCanvasElement, config: &Config, width: u32) -> Self {
+        let (iterations, color_cfg_name) = match config.active_config {
+            FractalType::JuliaSet => (
+                config.julia_set_cfg.max_iterations,
+                config.julia_set_cfg.color_cfg_name.as_ref(),
+            ),
+            FractalType::Mandelbrot => (
+                config.mandelbrot_cfg.max_iterations,
+                config.mandelbrot_cfg.color_cfg_name.as_ref(),
+            ),
+        };
+
+        let color_range = if let Some(color_cfg_name) = color_cfg_name {
+            if let Some(color_range) = config.color_cfg.get(color_cfg_name.as_str()) {
+                color_range.clone()
+            } else {
+                ColorRange::default()
+            }
+        } else {
+            ColorRange::default()
+        };
+
         Self {
             canvas,
-            steps: match config.active_config {
-                FractalType::JuliaSet => config.julia_set_cfg.max_iterations,
-                FractalType::Mandelbrot => config.mandelbrot_cfg.max_iterations,
-            },
+            iterations,
             width,
+            color_range,
         }
     }
 
@@ -54,19 +67,19 @@ impl Canvas {
         let ctx = self.get_2d_context();
         ctx.set_fill_style(&JsValue::from_str("FFFFFF"));
 
-        let mut last_color = "".to_string();
+        let mut last_value = self.iterations + 2;
         points.values[0..points.num_points]
             .iter()
             .for_each(|value| {
-                let color = if *value >= self.steps - 1 {
-                    BACKGROUND_COLOR.to_string()
-                } else {
-                    self.iterations_as_hue_to_rgb(*value)
-                };
-                if color != last_color {
+                if *value != last_value {
+                    last_value = *value;
+                    let color = if *value > self.iterations {
+                        BACKGROUND_COLOR.to_string()
+                    } else {
+                        self.iterations_as_hue_to_rgb(*value)
+                    };
                     // log!(format!("draw_result: color: {} pos: {},{}", color, x, y));
                     ctx.set_fill_style(&JsValue::from_str(color.as_str()));
-                    last_color = color;
                 }
                 ctx.fill_rect(x.into(), y.into(), 1.0, 1.0);
 
@@ -142,127 +155,30 @@ impl Canvas {
 
     #[inline]
     fn get_2d_context(&self) -> CanvasRenderingContext2d {
-        let tmp1: Object = self.canvas.get_context("2d")
-            .map_or_else(|err| {
-                panic!("failed to retrieve CanvasRenderingContext2d {:?}", err)
-            }, |v| v)
+        let tmp1: Object = self
+            .canvas
+            .get_context("2d")
+            .map_or_else(
+                |err| panic!("failed to retrieve CanvasRenderingContext2d {:?}", err),
+                |v| v,
+            )
             .expect("2d context not found in canvas");
         let tmp2: &JsValue = tmp1.as_ref();
-        tmp2.clone().dyn_into::<CanvasRenderingContext2d>().expect("Failed to cast to CanvasRenderingContext2d")
+        tmp2.clone()
+            .dyn_into::<CanvasRenderingContext2d>()
+            .expect("Failed to cast to CanvasRenderingContext2d")
     }
-
 
     #[allow(clippy::cast_precision_loss)]
     fn iterations_as_hue_to_rgb(&self, iterations: u32) -> String {
-        Self::hue_to_rgb(
-            (iterations as f32).mul_add(HUE_RANGE / self.steps as f32, HUE_OFFSET) % 360.0,
-        )
-    }
-
-    #[allow(
-    clippy::many_single_char_names,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss
-    )]
-    fn hue_to_rgb(hue: f32) -> String {
-        const TMP: f32 = 2.0 * DEFAULT_LIGHTNESS - 1.0;
-        const C: f32 = (1.0 - if TMP >= 0.0 { TMP } else { -TMP }) * DEFAULT_SATURATION;
-        const M: f32 = DEFAULT_LIGHTNESS - C / 2.0;
-        let x = C * (1.0 - f32::abs((hue / 60.0) % 2.0 - 1.0));
-
-        let (r, g, b) = match hue as u32 {
-            0..=59 => (C, x, 0.0),
-            60..=119 => (x, C, 0.0),
-            120..=179 => (0.0, C, x),
-            180..=239 => (0.0, x, C),
-            240..=299 => (x, 0.0, C),
-            _ => (C, 0.0, x),
-        };
-
-        let (r, g, b) = (
-            f32::floor((r + M) * 255.0).abs() as u32,
-            f32::floor((g + M) * 255.0).abs() as u32,
-            f32::floor((b + M) * 255.0).abs() as u32,
-        );
-
-        format!("#{:0>2X}{:0>2X}{:0>2X}", r % 0x100, g % 0x100, b % 0x100)
-    }
-
-    #[allow(
-    dead_code,
-    clippy::many_single_char_names,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss
-    )]
-    fn hsl_to_rgb(hue: f32, saturation: f32, lightness: f32) -> String {
-        // see: https://www.rapidtables.com/convert/color/hsl-to-rgb.html
-
-        assert!((0.0..=1.0).contains(&saturation));
-        assert!((0.0..=1.0).contains(&lightness));
-
-        let safe_hue = if hue >= 360.0 { hue % 360.0 } else { hue };
-
-        let c = (1.0 - f32::abs(2.0 * lightness - 1.0)) * saturation;
-        let x = c * (1.0 - ((safe_hue / 60.0) % 2.0 - 1.0).abs());
-        let m = lightness - c / 2.0;
-        let (r, g, b) = match safe_hue as u32 {
-            0..=59 => (c, x, 0.0),
-            60..=119 => (x, c, 0.0),
-            120..=179 => (0.0, c, x),
-            180..=239 => (0.0, x, c),
-            240..=299 => (x, 0.0, c),
-            300..=359 => (c, 0.0, x),
-            _ => {
-                panic!("invalid hue value: {}", hue);
+        let color_rgb = match &self.color_range {
+            ColorRange::Hsl(range) => range
+                .percent_of((iterations as f32 / self.iterations as f32).min(1.0))
+                .to_rgb(),
+            ColorRange::Rgb(range) => {
+                range.percent_of((iterations as f32 / self.iterations as f32).min(1.0))
             }
         };
-
-        let (r, g, b) = (
-            f32::floor((r + m) * 255.0).abs() as u32,
-            f32::floor((g + m) * 255.0).abs() as u32,
-            f32::floor((b + m) * 255.0).abs() as u32,
-        );
-
-        format!("#{:0>2X}{:0>2X}{:0>2X}", r % 0x100, g % 0x100, b % 0x100)
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-struct QueryObject {
-    pub name: String,
-}
-
-#[cfg(test)]
-mod test {
-    use super::Canvas;
-    use crate::work::canvas::{DEFAULT_SATURATION, DEFAULT_LIGHTNESS};
-
-    #[test]
-    fn test_iterations_as_hue_to_rgb() {
-        assert_eq!(Canvas::hue_to_rgb(0.0), "#FF0000");
-        assert_eq!(Canvas::hue_to_rgb(60.0), "#FFFF00");
-        assert_eq!(Canvas::hue_to_rgb(120.0), "#00FF00");
-        assert_eq!(Canvas::hue_to_rgb(180.0), "#00FFFF");
-        assert_eq!(Canvas::hue_to_rgb(240.0), "#0000FF");
-        assert_eq!(Canvas::hue_to_rgb(300.0), "#FF00FF");
-        assert_eq!(Canvas::hue_to_rgb(360.0), "#FF0000");
-        assert_eq!(Canvas::hue_to_rgb(340.0), "#FF0055");
-
-        assert_eq!(Canvas::hue_to_rgb(0.0),
-                   Canvas::hsl_to_rgb(0.0, DEFAULT_SATURATION, DEFAULT_LIGHTNESS));
-        assert_eq!(Canvas::hue_to_rgb(60.0),
-                   Canvas::hsl_to_rgb(60.0, DEFAULT_SATURATION, DEFAULT_LIGHTNESS));
-        assert_eq!(Canvas::hue_to_rgb(120.0),
-                   Canvas::hsl_to_rgb(120.0, DEFAULT_SATURATION, DEFAULT_LIGHTNESS));
-        assert_eq!(Canvas::hue_to_rgb(180.0),
-                   Canvas::hsl_to_rgb(180.0, DEFAULT_SATURATION, DEFAULT_LIGHTNESS));
-        assert_eq!(Canvas::hue_to_rgb(240.0),
-                   Canvas::hsl_to_rgb(240.0, DEFAULT_SATURATION, DEFAULT_LIGHTNESS));
-        assert_eq!(Canvas::hue_to_rgb(300.0),
-                   Canvas::hsl_to_rgb(300.0, DEFAULT_SATURATION, DEFAULT_LIGHTNESS));
-        assert_eq!(Canvas::hue_to_rgb(360.0),
-                   Canvas::hsl_to_rgb(360.0, DEFAULT_SATURATION, DEFAULT_LIGHTNESS));
-
-        // TODO: Tests for hsl_to_rgb
+        color_rgb.to_string()
     }
 }
