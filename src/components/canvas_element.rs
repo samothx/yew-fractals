@@ -11,8 +11,8 @@ use yew_agent::{Bridge, Bridged, Dispatched, Dispatcher};
 
 use crate::{
     agents::{
-        canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus},
-        command_msg_bus::{CommandMsgBus, CommandRequest},
+        canvas_msg_bus::{ControlMsgBus, ControlMsgRequest},
+        command_msg_bus::{CanvasCmdMsgBus, CommandRequest},
     },
     components::root::Config,
     work::{canvas::Canvas, fractal::FractalCalculator, stats::Stats},
@@ -21,16 +21,17 @@ use crate::{
 const FPS_RESTRICTED_TIMER: bool = false;
 
 pub struct CanvasElement {
-    event_bus: Dispatcher<CanvasSelectMsgBus>,
+    event_bus: Dispatcher<ControlMsgBus>,
     mouse_drag: Option<MouseDrag>,
     canvas_ref: NodeRef,
     canvas: Option<Canvas>,
-    _producer: Box<dyn Bridge<CommandMsgBus>>,
+    _producer: Box<dyn Bridge<CanvasCmdMsgBus>>,
     // config: Config,
     calculator: Option<FractalCalculator>,
     stats: Option<Stats>,
     paused: bool,
     on_draw: Callback<()>,
+    last_height: u32,
 }
 
 impl Component for CanvasElement {
@@ -38,21 +39,24 @@ impl Component for CanvasElement {
     type Properties = CanvasProps;
 
     fn create(ctx: &Context<Self>) -> Self {
+        info!("CanvasElement::create");
         Self {
-            event_bus: CanvasSelectMsgBus::dispatcher(),
+            event_bus: ControlMsgBus::dispatcher(),
             mouse_drag: None,
             canvas_ref: NodeRef::default(),
             canvas: None,
-            _producer: CommandMsgBus::bridge(ctx.link().callback(Msg::Command)),
+            _producer: CanvasCmdMsgBus::bridge(ctx.link().callback(Msg::Command)),
             // config: ctx.props().config.clone(),
             calculator: None,
             stats: None,
             paused: true,
             on_draw: ctx.link().callback(|_| Msg::OnDraw),
+            last_height: 0,
         }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+        info!("CanvasElement::update");
         match msg {
             Msg::MouseMove(event) => {
                 let mut res = false;
@@ -108,7 +112,7 @@ impl Component for CanvasElement {
                         self.mouse_drag = None;
                         if let Some(canvas_coords) = canvas_coords {
                             self.event_bus
-                                .send(CanvasMsgRequest::CanvasSelectMsg(canvas_coords));
+                                .send(ControlMsgRequest::CanvasSelectMsg(canvas_coords));
                         }
                     }
                     res = true;
@@ -175,7 +179,7 @@ impl Component for CanvasElement {
                         self.mouse_drag = None;
                         if let Some(canvas_coords) = canvas_coords {
                             self.event_bus
-                                .send(CanvasMsgRequest::CanvasSelectMsg(canvas_coords));
+                                .send(ControlMsgRequest::CanvasSelectMsg(canvas_coords));
                         }
                     }
                     res = true;
@@ -224,7 +228,7 @@ impl Component for CanvasElement {
                 match request {
                     CommandRequest::Start => {
                         info!("CanvasElement::update: starting");
-                        self.event_bus.send(CanvasMsgRequest::FractalStarted);
+                        self.event_bus.send(ControlMsgRequest::FractalStarted);
 
                         if let Some(canvas) = self.canvas.as_mut() {
                             canvas
@@ -247,7 +251,7 @@ impl Component for CanvasElement {
                         let points = calculator.calculate(self.stats.as_mut());
                         if let Some(stats) = self.stats.as_ref() {
                             self.event_bus
-                                .send(CanvasMsgRequest::FractalProgress(stats.format_stats()));
+                                .send(ControlMsgRequest::FractalProgress(stats.format_stats()));
                         }
                         if let Some(canvas) = self.canvas.as_ref() {
                             canvas.draw_results(points);
@@ -260,12 +264,13 @@ impl Component for CanvasElement {
                     }
                     CommandRequest::Stop => {
                         self.paused = true;
-                        self.event_bus.send(CanvasMsgRequest::FractalPaused);
+                        self.event_bus.send(ControlMsgRequest::FractalPaused);
                         false
                     }
                     CommandRequest::Clear => {
+                        info!("CanvasElement::update: CommandRequest::Clear");
                         self.paused = true;
-                        self.event_bus.send(CanvasMsgRequest::FractalPaused);
+                        self.event_bus.send(ControlMsgRequest::FractalPaused);
                         if let Some(canvas) = self.canvas.as_mut() {
                             canvas
                                 .clear_canvas(ctx.props().canvas_width, ctx.props().canvas_height);
@@ -281,7 +286,7 @@ impl Component for CanvasElement {
                         let points = calculator.calculate(self.stats.as_mut());
                         if let Some(stats) = self.stats.as_ref() {
                             self.event_bus
-                                .send(CanvasMsgRequest::FractalProgress(stats.format_stats()));
+                                .send(ControlMsgRequest::FractalProgress(stats.format_stats()));
                         }
                         if let Some(canvas) = self.canvas.as_ref() {
                             canvas.draw_results(points);
@@ -289,7 +294,7 @@ impl Component for CanvasElement {
                             if calculator.is_done() {
                                 // TODO: send notifications
                                 self.paused = true;
-                                self.event_bus.send(CanvasMsgRequest::FractalPaused);
+                                self.event_bus.send(ControlMsgRequest::FractalPaused);
                             } else {
                                 self.send_draw_ev();
                             }
@@ -304,6 +309,7 @@ impl Component for CanvasElement {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        info!("CanvasElement::view");
         let on_mouse_up = ctx.link().callback(Msg::MouseUp);
         let on_mouse_down = ctx.link().callback(Msg::MouseDown);
         let on_mouse_move = ctx.link().callback(Msg::MouseMove);
@@ -331,12 +337,22 @@ impl Component for CanvasElement {
         ]
     }
     fn rendered(&mut self, ctx: &Context<Self>, first_render: bool) {
+        info!("CanvasElement::rendered");
         if first_render {
             if let Some(canvas_el) = self.canvas_ref.cast::<HtmlCanvasElement>() {
+                info!("CanvasElement::rendered: Clear");
                 let mut canvas =
                     Canvas::new(canvas_el, &ctx.props().config, ctx.props().canvas_width);
                 canvas.clear_canvas(ctx.props().canvas_width, ctx.props().canvas_height);
                 self.canvas = Some(canvas);
+            }
+            self.last_height = ctx.props().canvas_height;
+        } else {
+            if self.last_height != ctx.props().canvas_height {
+                self.last_height = ctx.props().canvas_height;
+                if let Some(canvas) = self.canvas.as_mut() {
+                    canvas.clear_canvas(ctx.props().canvas_width, ctx.props().canvas_height);
+                }
             }
         }
     }

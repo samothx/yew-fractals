@@ -2,7 +2,7 @@
 use web_sys::Element;
 use yew::prelude::*;
 
-use crate::agents::canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus};
+use crate::agents::canvas_msg_bus::{ControlMsgBus, ControlMsgRequest};
 use crate::work::{
     complex::Complex,
     fractal::{JULIA_DEFAULT_ITERATIONS, JULIA_DEFAULT_X_MAX, JULIA_DEFAULT_X_MIN},
@@ -30,7 +30,7 @@ pub enum Msg {
     ResetArea,
     SaveConfig,
     Cancel,
-    CanvasMsg(CanvasMsgRequest),
+    CanvasMsg(ControlMsgRequest),
 }
 
 pub struct EditJuliaCfg {
@@ -43,7 +43,7 @@ pub struct EditJuliaCfg {
     x_max_real_ref: NodeRef,
     x_max_imag_ref: NodeRef,
     formula_ref: NodeRef,
-    _producer: Box<dyn Bridge<CanvasSelectMsgBus>>,
+    _producer: Box<dyn Bridge<ControlMsgBus>>,
 }
 // config: Option<JuliaSetCfg>
 
@@ -62,7 +62,7 @@ impl Component for EditJuliaCfg {
             x_min_real_ref: NodeRef::default(),
             x_min_imag_ref: NodeRef::default(),
             formula_ref: NodeRef::default(),
-            _producer: CanvasSelectMsgBus::bridge(ctx.link().callback(Msg::CanvasMsg)),
+            _producer: ControlMsgBus::bridge(ctx.link().callback(Msg::CanvasMsg)),
         }
     }
 
@@ -278,7 +278,7 @@ impl Component for EditJuliaCfg {
             Msg::CanvasMsg(canvas_msg) => {
                 info!("EditJuliaCfg: got msg CanvasMsg");
                 match canvas_msg {
-                    CanvasMsgRequest::CanvasSelectMsg(coords) => {
+                    ControlMsgRequest::CanvasSelectMsg(coords) => {
                         if ctx.props().edit_mode {
                             // TODO: implement
                             let x_scale = (ctx.props().config.x_max.real()

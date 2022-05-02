@@ -1,7 +1,6 @@
+use serde::{Deserialize, Serialize};
 use web_sys::window;
 use yew::prelude::*;
-
-use serde::{Deserialize, Serialize};
 
 use super::{
     canvas_element::CanvasElement,
@@ -32,6 +31,7 @@ pub struct Root {
     show_ctc_done: bool,
     show_disclaimer: bool,
     ctc_done_msg: String,
+    // event_bus: Option<Dispatcher<CanvasCmdMsgBus>>,
 }
 
 impl Component for Root {
@@ -58,6 +58,7 @@ impl Component for Root {
             show_ctc_done: false,
             show_disclaimer,
             ctc_done_msg: String::new(),
+            // event_bus: None,
         }
     }
 

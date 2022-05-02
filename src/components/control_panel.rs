@@ -6,9 +6,9 @@ use web_sys::{window, HtmlInputElement, HtmlSelectElement};
 
 use crate::{
     agents::{
-        canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus},
+        canvas_msg_bus::{ControlMsgBus, ControlMsgRequest},
         clipboard_worker::{ClipboardWorker, WorkerStatus},
-        command_msg_bus::{CommandMsgBus, CommandRequest},
+        command_msg_bus::{CanvasCmdMsgBus, CommandRequest},
     },
     work::{
         fractal::{FractalType, JuliaSetCfg, MandelbrotCfg},
@@ -19,13 +19,13 @@ use gloo::timers::future::TimeoutFuture;
 use wasm_bindgen_futures::spawn_local;
 
 pub struct ControlPanel {
-    event_bus: Option<Dispatcher<CommandMsgBus>>,
+    event_bus: Option<Dispatcher<CanvasCmdMsgBus>>,
     clipboard_worker: Option<Box<dyn Bridge<ClipboardWorker>>>,
     paused: bool,
     type_sel_ref: NodeRef,
     view_stats_cb_ref: NodeRef,
     view_stats_txt_ref: NodeRef,
-    _producer: Box<dyn Bridge<CanvasSelectMsgBus>>,
+    _producer: Box<dyn Bridge<ControlMsgBus>>,
     no_copy: bool,
 }
 
@@ -62,7 +62,7 @@ impl Component for ControlPanel {
             type_sel_ref: NodeRef::default(),
             view_stats_cb_ref: NodeRef::default(),
             view_stats_txt_ref: NodeRef::default(),
-            _producer: CanvasSelectMsgBus::bridge(ctx.link().callback(Msg::CanvasMsg)),
+            _producer: ControlMsgBus::bridge(ctx.link().callback(Msg::CanvasMsg)),
             no_copy,
         }
     }
@@ -199,15 +199,15 @@ impl Component for ControlPanel {
             Msg::CanvasMsg(canvas_msg) => {
                 // TODO: implement
                 match canvas_msg {
-                    CanvasMsgRequest::FractalStarted => {
+                    ControlMsgRequest::FractalStarted => {
                         self.paused = false;
                         true
                     }
-                    CanvasMsgRequest::FractalPaused => {
+                    ControlMsgRequest::FractalPaused => {
                         self.paused = true;
                         true
                     }
-                    CanvasMsgRequest::FractalProgress(msg) => {
+                    ControlMsgRequest::FractalProgress(msg) => {
                         set_value_on_txt_area_ref(
                             &self.view_stats_txt_ref,
                             "stats_txt",
@@ -301,7 +301,7 @@ impl Component for ControlPanel {
 
     fn rendered(&mut self, _ctx: &Context<Self>, first_render: bool) {
         if first_render && self.event_bus.is_none() {
-            self.event_bus = Some(CommandMsgBus::dispatcher());
+            self.event_bus = Some(CanvasCmdMsgBus::dispatcher());
         }
     }
 }
@@ -317,7 +317,7 @@ pub enum Msg {
     EditColors,
     TypeChanged,
     ViewStatsChanged,
-    CanvasMsg(CanvasMsgRequest),
+    CanvasMsg(ControlMsgRequest),
     ClipboardRes(WorkerStatus),
 }
 

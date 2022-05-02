@@ -1,5 +1,5 @@
 // use yew::{Component, Context, Html, Callback};
-use crate::agents::canvas_msg_bus::{CanvasMsgRequest, CanvasSelectMsgBus};
+use crate::agents::canvas_msg_bus::{ControlMsgBus, ControlMsgRequest};
 use crate::work::{
     complex::Complex,
     fractal::{
@@ -40,7 +40,7 @@ pub enum Msg {
     SaveConfig,
     Cancel,
     PowerChanged,
-    CanvasMsg(CanvasMsgRequest),
+    CanvasMsg(ControlMsgRequest),
 }
 
 pub struct EditMandelbrotCfg {
@@ -52,7 +52,7 @@ pub struct EditMandelbrotCfg {
     c_max_imag_ref: NodeRef,
     formula_ref: NodeRef,
     power_ref: NodeRef,
-    _producer: Box<dyn Bridge<CanvasSelectMsgBus>>,
+    _producer: Box<dyn Bridge<ControlMsgBus>>,
 }
 // config: Option<JuliaSetCfg>
 
@@ -70,7 +70,7 @@ impl Component for EditMandelbrotCfg {
             c_min_imag_ref: NodeRef::default(),
             formula_ref: NodeRef::default(),
             power_ref: NodeRef::default(),
-            _producer: CanvasSelectMsgBus::bridge(ctx.link().callback(Msg::CanvasMsg)),
+            _producer: ControlMsgBus::bridge(ctx.link().callback(Msg::CanvasMsg)),
         }
     }
 
@@ -285,7 +285,7 @@ impl Component for EditMandelbrotCfg {
             }
             Msg::CanvasMsg(canvas_msg) => {
                 match canvas_msg {
-                    CanvasMsgRequest::CanvasSelectMsg(coords) => {
+                    ControlMsgRequest::CanvasSelectMsg(coords) => {
                         info!("EditMandelbrotCfg: got msg CanvasSelect");
                         if ctx.props().edit_mode {
                             let x_scale = (ctx.props().config.c_max.real()

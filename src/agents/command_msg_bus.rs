@@ -5,12 +5,12 @@ use yew_agent::{Agent, AgentLink, Context, HandlerId};
 /// CommandMsgBus
 /// Transmits messages from the control panel component to the canvas component
 
-pub struct CommandMsgBus {
-    link: AgentLink<CommandMsgBus>,
+pub struct CanvasCmdMsgBus {
+    link: AgentLink<CanvasCmdMsgBus>,
     subscribers: HashSet<HandlerId>,
 }
 
-impl Agent for CommandMsgBus {
+impl Agent for CanvasCmdMsgBus {
     type Reach = Context<Self>;
     type Message = ();
     type Input = CommandRequest;

@@ -6,16 +6,16 @@ use yew_agent::{Agent, AgentLink, Context, HandlerId};
 /// Transmits messages from the canvas component to the root component
 /// and the config editor components
 
-pub struct CanvasSelectMsgBus {
-    link: AgentLink<CanvasSelectMsgBus>,
+pub struct ControlMsgBus {
+    link: AgentLink<ControlMsgBus>,
     subscribers: HashSet<HandlerId>,
 }
 
-impl Agent for CanvasSelectMsgBus {
+impl Agent for ControlMsgBus {
     type Reach = Context<Self>;
     type Message = ();
-    type Input = CanvasMsgRequest;
-    type Output = CanvasMsgRequest;
+    type Input = ControlMsgRequest;
+    type Output = ControlMsgRequest;
 
     fn create(link: AgentLink<Self>) -> Self {
         Self {
@@ -42,7 +42,7 @@ impl Agent for CanvasSelectMsgBus {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum CanvasMsgRequest {
+pub enum ControlMsgRequest {
     FractalStarted,
     FractalProgress(String),
     FractalPaused,

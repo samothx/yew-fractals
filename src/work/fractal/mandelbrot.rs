@@ -1,4 +1,3 @@
-use super::find_escape_radius;
 use crate::components::root::Config;
 use serde::{Deserialize, Serialize};
 
