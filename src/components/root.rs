@@ -16,7 +16,7 @@ use crate::components::edit_color_cfg::ColorCfg;
 use crate::work::fractal::{FractalType, JuliaSetCfg, MandelbrotCfg};
 
 const STORAGE_KEY: &str = "yew_fractals_v2.5";
-const DEBUG_NO_STORAGE: bool = true;
+const DEBUG_NO_STORAGE: bool = false;
 
 pub const DEFAULT_WIDTH: u32 = 1024;
 
