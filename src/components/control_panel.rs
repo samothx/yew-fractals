@@ -18,6 +18,12 @@ use crate::{
 use gloo::timers::future::TimeoutFuture;
 use wasm_bindgen_futures::spawn_local;
 
+#[cfg(feature = "color_editor")]
+const COLOR_EDITOR: bool = true;
+
+#[cfg(not(feature = "color_editor"))]
+const COLOR_EDITOR: bool = false;
+
 pub struct ControlPanel {
     event_bus: Option<Dispatcher<CanvasCmdMsgBus>>,
     clipboard_worker: Option<Box<dyn Bridge<ClipboardWorker>>>,
@@ -265,10 +271,17 @@ impl Component for ControlPanel {
                         disabled={ self.no_copy || !self.paused || ctx.props().edit_mode }>
                     {"Copy"}
                 </button>
-                <button class="menu_button" id="colors" onclick={on_edit_colors}
-                        disabled={ !self.paused || ctx.props().edit_mode }>
-                    {"Colors"}
-                </button>
+                { if COLOR_EDITOR {
+                    html![
+                            <button class="menu_button" id="colors" onclick={on_edit_colors}
+                                    disabled={ !self.paused || ctx.props().edit_mode }>
+                                {"Colors"}
+                            </button>
+                        ]
+                    } else {
+                        html![]
+                    }
+                }
                 <label class="type_select_label" for="type_select">
                     {"Select Type"}
                 </label>

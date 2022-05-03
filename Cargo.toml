@@ -16,6 +16,8 @@ license = "MIT OR Apache-2.0"
 default = ["use_katex"]
 use_katex = ["katex"]
 
+color_editor = []
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
