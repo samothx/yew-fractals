@@ -6,33 +6,27 @@ use web_sys::{HtmlInputElement, HtmlTextAreaElement};
 
 pub fn get_f64_from_ref(node_ref: &NodeRef, name: &str) -> Result<f64, String> {
     match node_ref.cast::<HtmlInputElement>() {
-        Some(element) => {
-            match element.value().parse::<f64>() {
-                Ok(value) => Ok(value),
-                Err(err) => {
-                    Err(format!("Unable to parse value {}, error: {}", name, err))
-                }
-            }
+        Some(element) => match element.value().parse::<f64>() {
+            Ok(value) => Ok(value),
+            Err(err) => Err(format!("Unable to parse value {}, error: {}", name, err)),
         },
-        None => {
-            Err(format!("Could not cast NodeRef to HtmlInputElement for value {}", name))
-        }
+        None => Err(format!(
+            "Could not cast NodeRef to HtmlInputElement for value {}",
+            name
+        )),
     }
 }
 
 pub fn get_u32_from_ref(node_ref: &NodeRef, name: &str) -> Result<u32, String> {
     match node_ref.cast::<HtmlInputElement>() {
-        Some(element) => {
-            match element.value().parse::<u32>() {
-                Ok(value) => Ok(value),
-                Err(err) => {
-                    Err(format!("Unable to parse value {}, error: {}", name, err))
-                }
-            }
+        Some(element) => match element.value().parse::<u32>() {
+            Ok(value) => Ok(value),
+            Err(err) => Err(format!("Unable to parse value {}, error: {}", name, err)),
         },
-        None => {
-            Err(format!("Could not cast NodeRef to HtmlInputElement for value {}", name))
-        }
+        None => Err(format!(
+            "Could not cast NodeRef to HtmlInputElement for value {}",
+            name
+        )),
     }
 }
 
@@ -41,22 +35,28 @@ pub fn set_value_on_input_ref(node_ref: &NodeRef, name: &str, value: &str) -> Re
         Some(element) => {
             element.set_value(value);
             Ok(())
-        },
-        None => {
-            Err(format!("Could not cast NodeRef to HtmlInputElement for value {}", name))
         }
+        None => Err(format!(
+            "Could not cast NodeRef to HtmlInputElement for value {}",
+            name
+        )),
     }
 }
 
-pub fn set_value_on_txt_area_ref(node_ref: &NodeRef, name: &str, value: &str) -> Result<(), String> {
+pub fn set_value_on_txt_area_ref(
+    node_ref: &NodeRef,
+    name: &str,
+    value: &str,
+) -> Result<(), String> {
     match node_ref.cast::<HtmlTextAreaElement>() {
         Some(element) => {
             element.set_value(value);
             Ok(())
-        },
-        None => {
-            Err(format!("Could not cast NodeRef to HtmlTextAreaElement for value {}", name))
         }
+        None => Err(format!(
+            "Could not cast NodeRef to HtmlTextAreaElement for value {}",
+            name
+        )),
     }
 }
 
@@ -110,42 +110,10 @@ pub fn get_u32_from_input(name: &str) -> Option<u32> {
 }
 */
 
-// TODO: implement on ComplexRational
-#[must_use]
-pub fn find_escape_radius(c_norm: f64) -> f64 {
-    // Newton iteration
-    let mut radius = 2.0;
-
-    // eprintln!("find_escape_radius({}): c_norm: {}, start: {}", c, c_norm, radius);
-    for _idx in 0..20 {
-        let delta_r = radius * radius - radius - c_norm;
-
-        if (0.0..=0.01).contains(&delta_r) {
-            break;
-        }
-
-        let gradient = 2.0 * radius - 1.0;
-        if gradient < f64::EPSILON {
-            warn!("stuck on the zero gradient");
-            radius = 2.0;
-            break;
-        }
-
-        radius -= delta_r / gradient;
-    }
-
-    if radius * radius - radius - c_norm >= 0.0 && radius <= 2.0 {
-        radius
-    } else {
-        2.0
-    }
-}
-
-
 #[cfg(test)]
 mod test {
-    use crate::work::complex::Complex;
     use super::find_escape_radius;
+    use crate::work::complex::Complex;
 
     #[test]
     fn test_find_escape_radius() {

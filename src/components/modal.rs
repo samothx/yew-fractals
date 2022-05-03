@@ -9,10 +9,9 @@ pub(crate) use modal_ok::ModalOk;
 const DEFAULT_COLOR: &str = "lightblue";
 
 #[allow(dead_code)]
-#[derive(PartialEq,Clone)]
+#[derive(PartialEq, Clone)]
 pub enum ModalMsg {
     StringList(Vec<String>),
     String(String),
-    Html(Html)
+    Html(Html),
 }
-

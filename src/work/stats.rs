@@ -48,24 +48,26 @@ Tot. Time:  {}
 Iter/Sec:   {:.3}
 Points/Sec: {:.3}
         ",
-            self.iterations, self.points, (self.points * 100) / self.tot_points,
+            self.iterations,
+            self.points,
+            (self.points * 100) / self.tot_points,
             Stats::format_time(self.time_in_fractal),
-            Stats::format_time(self.total_time),self.iterations as f64/ self.time_in_fractal,
+            Stats::format_time(self.total_time),
+            self.iterations as f64 / self.time_in_fractal,
             self.points as f64 / self.time_in_fractal
         )
     }
 
     fn format_time(time: f64) -> String {
-        let time_in_secs = time / 1000.0; 
+        let time_in_secs = time / 1000.0;
         let hours = (time_in_secs / 3600.0).floor();
         let minutes = ((time_in_secs % 3600.0) / 60.0).floor();
         let seconds = (time_in_secs % 60.0).floor();
         format!("{}:{:0>2}:{:0>2}", hours, minutes, seconds)
- 
     }
 }
 
-#[cfg(test)] 
+#[cfg(test)]
 mod test {
     use super::Stats;
     #[test]

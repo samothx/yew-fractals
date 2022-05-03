@@ -10,6 +10,12 @@ license = "MIT OR Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+# use_katex feature is mainly introduced to disable katex as it fails to compile when trun normally
+# with cargo build, cargo test or cargo clippy
+default = ["use_katex"]
+use_katex = ["katex"]
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
@@ -31,6 +37,7 @@ wasm-bindgen-test = "0.2"
 version = "0.4"
 default-features = false
 features = ["wasm-js"]
+optional = true
 
 [dependencies.yew]
 version = "0.19"

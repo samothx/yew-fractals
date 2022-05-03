@@ -1,10 +1,9 @@
-use yew::prelude::*;
-use yew::{Component, Context, Html, html, NodeRef, Properties};
-use web_sys::HtmlDivElement;
 use super::{ModalMsg, DEFAULT_COLOR};
+use web_sys::HtmlDivElement;
+use yew::prelude::*;
+use yew::{html, Component, Context, Html, NodeRef, Properties};
 
 // TODO: pretty up modal
-
 
 pub(crate) struct ModalOk {
     modal_ref: NodeRef,
@@ -17,7 +16,7 @@ impl Component for ModalOk {
     type Properties = ModalOkProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
-        Self{
+        Self {
             modal_ref: NodeRef::default(),
             content_ref: NodeRef::default(),
             title_ref: NodeRef::default(),
@@ -65,19 +64,31 @@ impl Component for ModalOk {
     }
 
     fn rendered(&mut self, ctx: &Context<Self>, _first_render: bool) {
-        info!("ModalOk::rendered: bgcolor {:?}", ctx.props().background_color.as_ref());
-        let _res = self.content_ref.cast::<HtmlDivElement>().expect("Could not cast to HtmlDivElement")
-        .set_attribute("style",format!("background-color:{};",
-            if let Some(color) = ctx.props().background_color.as_ref() {
-                color
-            } else {
-                DEFAULT_COLOR
-             }).as_str());
+        info!(
+            "ModalOk::rendered: bgcolor {:?}",
+            ctx.props().background_color.as_ref()
+        );
+        let _res = self
+            .content_ref
+            .cast::<HtmlDivElement>()
+            .expect("Could not cast to HtmlDivElement")
+            .set_attribute(
+                "style",
+                format!(
+                    "background-color:{};",
+                    if let Some(color) = ctx.props().background_color.as_ref() {
+                        color
+                    } else {
+                        DEFAULT_COLOR
+                    }
+                )
+                .as_str(),
+            );
     }
 }
 
 pub enum Msg {
-    Ok
+    Ok,
 }
 
 #[derive(Properties, PartialEq, Clone)]
